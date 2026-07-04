@@ -41,6 +41,11 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+html {
+  /* Ensures background extends behind status bar/notch on iOS PWA */
+  background: var(--bg-gradient-start);
+}
+
 body {
   background: radial-gradient(circle at 50% 0%, #17253d 0%, var(--bg-gradient-start) 60%), var(--bg-gradient-end);
   background-attachment: fixed;
@@ -50,7 +55,11 @@ body {
   display: flex;
   flex-direction: column;
   overflow-x: hidden;
+  /* iOS PWA safe area insets for notch/Dynamic Island */
+  padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
 #app {
@@ -58,6 +67,7 @@ body {
   max-width: 480px; /* Force mobile-app like view on desktop */
   margin: 0 auto;
   min-height: 100vh;
+  min-height: 100dvh; /* Dynamic viewport height for iOS */
   display: flex;
   flex-direction: column;
   position: relative;
@@ -224,7 +234,7 @@ body {
 /* Float Floating Action Button (FAB) */
 .fab {
   position: fixed;
-  bottom: 24px;
+  bottom: calc(24px + env(safe-area-inset-bottom));
   right: calc(50% - 216px); /* Align with mobile layout */
   width: 56px;
   height: 56px;
