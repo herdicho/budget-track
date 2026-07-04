@@ -1,5 +1,8 @@
 <template>
   <div class="app-layout">
+    <!-- iOS PWA Safe Area Top Spacer -->
+    <div class="safe-area-spacer"></div>
+
     <!-- View Switcher with Transition -->
     <Transition name="fade" mode="out-in">
       <!-- 1. Login View -->
@@ -230,5 +233,14 @@ export default {
   min-height: 100vh;
   min-height: 100dvh;
   width: 100%;
+}
+
+/* iOS PWA: solid spacer that pushes content below notch/Dynamic Island */
+.safe-area-spacer {
+  width: 100%;
+  height: env(safe-area-inset-top, 0px);
+  min-height: env(safe-area-inset-top, 0px);
+  flex-shrink: 0;
+  background: transparent;
 }
 </style>
