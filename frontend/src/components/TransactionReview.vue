@@ -50,28 +50,26 @@
           />
         </div>
 
-        <div class="form-row">
-          <!-- Date -->
-          <div class="form-group half">
-            <label for="date" class="form-label">Tanggal</label>
-            <input 
-              id="date"
-              type="date" 
-              v-model="localTx.date" 
-              class="form-input" 
-              required
-            />
-          </div>
+        <!-- Date -->
+        <div class="form-group">
+          <label for="date" class="form-label">Tanggal</label>
+          <input 
+            id="date"
+            type="date" 
+            v-model="localTx.date" 
+            class="form-input" 
+            required
+          />
+        </div>
 
-          <!-- Category -->
-          <div class="form-group half">
-            <label for="category" class="form-label">Kategori</label>
-            <select id="category" v-model="localTx.category" class="form-input select-input" required>
-              <option v-for="cat in categories" :key="cat.id || cat.name" :value="cat.name">
-                {{ cat.emoji }} {{ cat.name }}
-              </option>
-            </select>
-          </div>
+        <!-- Category (only shown if NO items or Edit Mode) -->
+        <div v-if="!hasItemsWithCategory" class="form-group">
+          <label for="category" class="form-label">Kategori</label>
+          <select id="category" v-model="localTx.category" class="form-input select-input" required>
+            <option v-for="cat in categories" :key="cat.id || cat.name" :value="cat.name">
+              {{ cat.emoji }} {{ cat.name }}
+            </option>
+          </select>
         </div>
 
         <!-- Payment Source -->
@@ -124,13 +122,43 @@
           </div>
         </div>
 
-        <!-- Items Breakdown Details -->
+        <!-- Items Breakdown with Per-Item Category -->
         <div v-if="localTx.items && localTx.items.length > 0" class="items-breakdown">
-          <span class="form-label">Rincian Barang</span>
+          <span class="form-label">Rincian Barang & Kategori</span>
+          
+          <!-- Multi-category split info banner -->
+          <div v-if="categoryGroups.length > 1" class="split-info-banner">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+            <span>Nota akan disimpan sebagai <strong>{{ categoryGroups.length }} transaksi</strong> berdasarkan kategori</span>
+          </div>
+
           <div class="items-list">
-            <div v-for="(item, idx) in localTx.items" :key="idx" class="item-row">
-              <span class="item-name">{{ item.name }} (x{{ item.quantity }})</span>
-              <span class="item-price">{{ formatCurrency(item.price) }}</span>
+            <div v-for="(item, idx) in localTx.items" :key="idx" class="item-row-detailed">
+              <div class="item-main">
+                <span class="item-name">{{ item.name }} (x{{ item.quantity }})</span>
+                <span class="item-price">{{ formatCurrency(item.price) }}</span>
+              </div>
+              <div class="item-category-select">
+                <select 
+                  v-model="item.category" 
+                  class="item-cat-dropdown"
+                >
+                  <option v-for="cat in expenseCategories" :key="cat.name" :value="cat.name">
+                    {{ cat.emoji }} {{ cat.name }}
+                  </option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Category Groups Summary -->
+          <div v-if="categoryGroups.length > 1" class="category-groups-summary">
+            <div v-for="group in categoryGroups" :key="group.category" class="category-group-row">
+              <span class="group-cat-badge" :style="{ borderColor: getCategoryColor(group.category) }">
+                {{ getCategoryEmoji(group.category) }} {{ group.category }}
+              </span>
+              <span class="group-amount">{{ formatCurrency(group.total) }}</span>
+              <span class="group-count">({{ group.items.length }} item)</span>
             </div>
           </div>
         </div>
@@ -138,7 +166,9 @@
         <div class="action-buttons">
           <button type="submit" class="btn btn-primary" :disabled="saving">
             <span v-if="saving" class="spinner"></span>
-            <span v-else>{{ isEditMode ? 'Simpan Perubahan' : 'Simpan Transaksi' }}</span>
+            <span v-else>
+              {{ isEditMode ? 'Simpan Perubahan' : (categoryGroups.length > 1 ? `Simpan ${categoryGroups.length} Transaksi` : 'Simpan Transaksi') }}
+            </span>
           </button>
           <button type="button" @click="$emit('cancel')" class="btn btn-secondary" :disabled="saving">
             Batal
@@ -185,15 +215,15 @@ export default {
       payment_source: props.extractedData?.payment_source || 'Cash',
       amount: props.extractedData?.amount || 0.0,
       user_name: props.extractedData?.user_name || 'Suami',
-      items: props.extractedData?.items || [],
+      items: (props.extractedData?.items || []).map(item => ({
+        ...item,
+        category: item.category || props.extractedData?.category || 'Lain-lain'
+      })),
       receipt_url: props.extractedData?.receipt_url || '',
       transfer_to: props.extractedData?.transfer_to || ''
     })
 
-    // categories is received dynamically as a prop
-
     const localSources = ref([...props.paymentSources])
-
     const saving = ref(false)
     const showReceiptPhoto = ref(false)
 
@@ -222,6 +252,47 @@ export default {
       }).format(val || 0)
     }
 
+    // Filter out Transfer/Pendapatan/Saldo Awal from item category options
+    const expenseCategories = computed(() => {
+      return props.categories.filter(c => 
+        !['Transfer', 'Pendapatan', 'Saldo Awal'].includes(c.name)
+      )
+    })
+
+    // Check if items have per-item category (from Gemini)
+    const hasItemsWithCategory = computed(() => {
+      return localTx.items && localTx.items.length > 0 && localTx.items.some(i => i.category)
+    })
+
+    // Group items by category
+    const categoryGroups = computed(() => {
+      if (!localTx.items || localTx.items.length === 0) {
+        return [{ category: localTx.category, items: [], total: localTx.amount }]
+      }
+
+      const groups = {}
+      for (const item of localTx.items) {
+        const cat = item.category || localTx.category || 'Lain-lain'
+        if (!groups[cat]) {
+          groups[cat] = { category: cat, items: [], total: 0 }
+        }
+        groups[cat].items.push(item)
+        groups[cat].total += (item.price || 0)
+      }
+
+      return Object.values(groups)
+    })
+
+    const getCategoryColor = (catName) => {
+      const cat = props.categories.find(c => c.name && c.name.toLowerCase() === catName?.toLowerCase())
+      return cat?.color || '#ffd166'
+    }
+
+    const getCategoryEmoji = (catName) => {
+      const cat = props.categories.find(c => c.name && c.name.toLowerCase() === catName?.toLowerCase())
+      return cat?.emoji || '📦'
+    }
+
     // Watch payment source to reset transfer_to if they clash
     watch(() => localTx.payment_source, (newVal) => {
       if (localTx.category === 'Transfer' && localTx.transfer_to === newVal) {
@@ -234,37 +305,105 @@ export default {
     const saveTransaction = async () => {
       saving.value = true
       try {
-        // Prepare payload copy to normalize values
-        const payload = { ...localTx }
-        if (payload.category === 'Transfer') {
-          const oldDest = props.extractedData?.transfer_to || ''
-          const defaultOldMerchant = `Pindah Dana ke ${oldDest}`
-          if (!payload.merchant || payload.merchant === defaultOldMerchant) {
-            payload.merchant = `Pindah Dana ke ${payload.transfer_to}`
+        // Edit mode: single transaction update (no splitting)
+        if (isEditMode.value) {
+          const payload = { ...localTx }
+          if (payload.category === 'Transfer') {
+            const oldDest = props.extractedData?.transfer_to || ''
+            const defaultOldMerchant = `Pindah Dana ke ${oldDest}`
+            if (!payload.merchant || payload.merchant === defaultOldMerchant) {
+              payload.merchant = `Pindah Dana ke ${payload.transfer_to}`
+            }
+          } else {
+            payload.transfer_to = null
+          }
+
+          const response = await fetch(
+            `${props.apiUrl}/api/transactions/${props.extractedData.id}`,
+            {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-App-Password': props.authPassword
+              },
+              body: JSON.stringify(payload)
+            }
+          )
+          if (response.ok) {
+            emit('save-success')
+          } else {
+            alert('Gagal menyimpan perubahan. Coba lagi.')
+          }
+          return
+        }
+
+        // New transaction mode: check if we need to split by category
+        const groups = categoryGroups.value
+
+        if (groups.length <= 1) {
+          // Single category — save as one transaction (original behavior)
+          const payload = { ...localTx }
+          // If items have categories, use the group's category
+          if (hasItemsWithCategory.value && groups.length === 1) {
+            payload.category = groups[0].category
+          }
+          if (payload.category === 'Transfer') {
+            if (!payload.merchant) {
+              payload.merchant = `Pindah Dana ke ${payload.transfer_to}`
+            }
+          } else {
+            payload.transfer_to = null
+          }
+
+          const response = await fetch(`${props.apiUrl}/api/transactions`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-App-Password': props.authPassword
+            },
+            body: JSON.stringify(payload)
+          })
+          if (!response.ok) {
+            alert('Gagal menyimpan transaksi. Coba lagi.')
+            return
           }
         } else {
-          payload.transfer_to = null
+          // Multiple categories — create one transaction per category group
+          let allSuccess = true
+          for (const group of groups) {
+            const payload = {
+              merchant: localTx.merchant,
+              date: localTx.date,
+              category: group.category,
+              payment_source: localTx.payment_source,
+              amount: group.total,
+              user_name: localTx.user_name,
+              items: group.items,
+              receipt_url: localTx.receipt_url,
+              transfer_to: null
+            }
+
+            const response = await fetch(`${props.apiUrl}/api/transactions`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-App-Password': props.authPassword
+              },
+              body: JSON.stringify(payload)
+            })
+
+            if (!response.ok) {
+              allSuccess = false
+              console.error(`Failed to save transaction for category: ${group.category}`)
+            }
+          }
+
+          if (!allSuccess) {
+            alert('Beberapa transaksi gagal disimpan. Silakan cek riwayat transaksi.')
+          }
         }
 
-        const url = isEditMode.value
-          ? `${props.apiUrl}/api/transactions/${props.extractedData.id}`
-          : `${props.apiUrl}/api/transactions`
-        const method = isEditMode.value ? 'PUT' : 'POST'
-
-        const response = await fetch(url, {
-          method,
-          headers: {
-            'Content-Type': 'application/json',
-            'X-App-Password': props.authPassword
-          },
-          body: JSON.stringify(payload)
-        })
-
-        if (response.ok) {
-          emit('save-success')
-        } else {
-          alert('Gagal menyimpan transaksi. Coba lagi.')
-        }
+        emit('save-success')
       } catch (err) {
         console.error("Error saving transaction:", err)
         alert('Kesalahan koneksi ke server backend.')
@@ -280,7 +419,12 @@ export default {
       showReceiptPhoto,
       formatCurrency,
       saveTransaction,
-      isEditMode
+      isEditMode,
+      expenseCategories,
+      hasItemsWithCategory,
+      categoryGroups,
+      getCategoryColor,
+      getCategoryEmoji
     }
   }
 }
@@ -376,19 +520,6 @@ export default {
   text-align: center;
 }
 
-/* Form row structure */
-.form-row {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-
-.half {
-  flex: 1;
-  min-width: 0;
-  width: 100%;
-}
-
 /* Fix iOS date input alignment */
 input[type="date"].form-input {
   width: 100%;
@@ -411,30 +542,134 @@ input[type="date"].form-input {
   margin-bottom: 24px;
 }
 
+.split-info-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(76, 201, 240, 0.08);
+  border: 1px solid rgba(76, 201, 240, 0.2);
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin-top: 8px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: var(--color-secondary);
+  line-height: 1.4;
+}
+
+.split-info-banner svg {
+  flex-shrink: 0;
+}
+
 .items-list {
   background: rgba(0, 0, 0, 0.15);
   border: 1px solid var(--glass-border);
   border-radius: 14px;
-  padding: 14px;
+  padding: 10px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
 }
 
-.item-row {
+.item-row-detailed {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 6px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.item-main {
   display: flex;
   justify-content: space-between;
-  font-size: 13px;
-  font-weight: 500;
+  align-items: center;
 }
 
 .item-name {
+  font-size: 13px;
+  font-weight: 500;
   color: var(--text-primary);
-  text-align: left;
 }
 
 .item-price {
+  font-size: 13px;
+  font-weight: 600;
   color: var(--text-secondary);
+  white-space: nowrap;
+  margin-left: 8px;
+}
+
+.item-category-select {
+  width: 100%;
+}
+
+.item-cat-dropdown {
+  width: 100%;
+  padding: 6px 30px 6px 10px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--glass-border);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  outline: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.item-cat-dropdown:focus {
+  border-color: var(--color-primary-light);
+  box-shadow: 0 0 0 2px rgba(76, 201, 240, 0.15);
+}
+
+/* Category Groups Summary */
+.category-groups-summary {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+}
+
+.category-group-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.group-cat-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 8px;
+  border: 1px solid;
+  font-size: 12px;
+  font-weight: 600;
+  background: rgba(0, 0, 0, 0.2);
+  white-space: nowrap;
+}
+
+.group-amount {
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-left: auto;
+}
+
+.group-count {
+  font-size: 11px;
+  color: var(--text-muted);
 }
 
 .action-buttons {

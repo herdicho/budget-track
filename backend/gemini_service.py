@@ -15,6 +15,7 @@ class ReceiptItem(BaseModel):
     name: str = Field(description="Nama barang yang dibeli")
     quantity: int = Field(description="Jumlah barang yang dibeli")
     price: float = Field(description="Harga total untuk item ini dalam Rupiah")
+    category: str = Field(description="Kategori spesifik untuk item ini. Harus bernilai salah satu dari: 'Makanan', 'Transportasi', 'Kebutuhan Bulanan', 'Kebutuhan Bayi', 'Hiburan', 'Lain-lain'")
 
 class ReceiptDetails(BaseModel):
     merchant: str = Field(description="Nama toko, restoran, merchant, atau tempat pembelian")
@@ -37,8 +38,8 @@ def extract_receipt_details(image_bytes: bytes, mime_type: str = "image/jpeg") -
             "payment_source": "Cash",
             "amount": 125000.0,
             "items": [
-                {"name": "Minyak Goreng 2L", "quantity": 1, "price": 45000.0},
-                {"name": "Beras 5kg", "quantity": 1, "price": 80000.0}
+                {"name": "Minyak Goreng 2L", "quantity": 1, "price": 45000.0, "category": "Kebutuhan Bulanan"},
+                {"name": "Beras 5kg", "quantity": 1, "price": 80000.0, "category": "Makanan"}
             ]
         }
 
@@ -47,8 +48,11 @@ def extract_receipt_details(image_bytes: bytes, mime_type: str = "image/jpeg") -
         
         prompt = (
             "Analisis gambar nota belanja ini dan ekstrak informasi transaksi secara terperinci. "
-            "Isi bidang 'category' dengan memilih salah satu dari: Makanan, Transportasi, Kebutuhan Bulanan, "
-            "Kebutuhan Bayi, Hiburan, atau Lain-lain. Jika ada metode pembayaran yang tertulis di nota (seperti debit BCA, QRIS Gopay, cash, dll), "
+            "PENTING: Untuk setiap item/barang di nota, tentukan kategori SPESIFIK per-item di field 'category' pada masing-masing item. "
+            "Contoh: telur, beras, mie instan → 'Makanan'; sabun, shampo, detergen → 'Kebutuhan Bulanan'; popok, susu bayi → 'Kebutuhan Bayi'. "
+            "Field 'category' di level atas (bukan item) diisi dengan kategori yang paling dominan/banyak di nota. "
+            "Pilihan kategori: Makanan, Transportasi, Kebutuhan Bulanan, Kebutuhan Bayi, Hiburan, atau Lain-lain. "
+            "Jika ada metode pembayaran yang tertulis di nota (seperti debit BCA, QRIS Gopay, cash, dll), "
             "tebak payment_source-nya. Jika tidak ada, kembalikan 'Cash'."
         )
         
