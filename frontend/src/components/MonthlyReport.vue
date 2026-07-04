@@ -440,8 +440,8 @@ export default {
 
 .report-header {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  gap: 12px;
   margin-bottom: 24px;
 }
 
@@ -467,11 +467,12 @@ export default {
 .month-navigator {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 12px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--glass-border);
   border-radius: 16px;
-  padding: 4px 12px;
+  padding: 10px 16px;
 }
 
 .nav-btn {

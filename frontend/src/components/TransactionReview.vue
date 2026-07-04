@@ -379,12 +379,13 @@ export default {
 /* Form row structure */
 .form-row {
   display: flex;
-  gap: 16px;
+  flex-direction: column;
+  gap: 0;
 }
 
 .half {
   flex: 1;
-  min-width: 0; /* Prevents overflow in flex child */
+  min-width: 0;
 }
 
 .select-input {
