@@ -386,6 +386,14 @@ export default {
 .half {
   flex: 1;
   min-width: 0;
+  width: 100%;
+}
+
+/* Fix iOS date input alignment */
+input[type="date"].form-input {
+  width: 100%;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 .select-input {
