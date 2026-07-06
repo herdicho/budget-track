@@ -1,5 +1,6 @@
 import os
 import uuid
+import time
 from datetime import datetime
 from dotenv import load_dotenv
 from supabase import create_client, Client
@@ -15,17 +16,73 @@ if SUPABASE_URL.endswith("/rest/v1/"):
 elif SUPABASE_URL.endswith("/rest/v1"):
     SUPABASE_URL = SUPABASE_URL[:-8]
 
-supabase_client: Client = None
+# Check if Supabase credentials are valid (not placeholders)
+_has_supabase_config = bool(
+    SUPABASE_URL and SUPABASE_KEY 
+    and "your-supabase" not in SUPABASE_URL 
+    and SUPABASE_URL != ""
+)
 
-# Only initialize if actual credentials are provided and not placeholders
-if SUPABASE_URL and SUPABASE_KEY and "your-supabase" not in SUPABASE_URL and SUPABASE_URL != "":
+# Lazy client with auto-reconnect
+_supabase_client: Client = None
+_client_created_at: float = 0
+_CLIENT_MAX_AGE_SECONDS = 300  # Recreate client every 5 minutes to prevent stale connections
+
+def _create_client() -> Client:
+    """Create a fresh Supabase client."""
+    global _supabase_client, _client_created_at
     try:
-        supabase_client = create_client(SUPABASE_URL, SUPABASE_KEY)
-        print("Supabase client successfully initialized.")
+        _supabase_client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        _client_created_at = time.time()
+        print("Supabase client (re)initialized successfully.")
+        return _supabase_client
     except Exception as e:
         print(f"Failed to initialize Supabase client: {e}")
+        _supabase_client = None
+        return None
+
+# Initialize on first load if config is available
+if _has_supabase_config:
+    _create_client()
 else:
     print("Running backend in mock/local mode (Supabase URL/Key not configured or placeholders used).")
+
+# For backward compat: module-level reference
+supabase_client = _supabase_client
+
+def get_client() -> Client:
+    """Get Supabase client with auto-reconnect if stale or dead."""
+    global supabase_client, _supabase_client
+    
+    if not _has_supabase_config:
+        return None
+    
+    # Recreate client if it's too old (prevents stale connections after HF sleep)
+    age = time.time() - _client_created_at
+    if _supabase_client is None or age > _CLIENT_MAX_AGE_SECONDS:
+        print(f"Supabase client is stale ({age:.0f}s old) or missing. Reconnecting...")
+        _create_client()
+        supabase_client = _supabase_client
+    
+    if not _supabase_client:
+        raise ValueError("Supabase client is not initialized. Please set SUPABASE_URL and SUPABASE_KEY in .env.")
+    
+    return _supabase_client
+
+def execute_with_retry(query_fn):
+    """
+    Executes a query function that takes a Supabase client.
+    If it fails, recreates the client and retries once.
+    """
+    client = get_client()
+    try:
+        return query_fn(client)
+    except Exception as e:
+        print(f"Supabase query failed: {e}. Reconnecting client and retrying once...")
+        global _client_created_at
+        _client_created_at = 0  # Force recreation on the next get_client call
+        client = get_client()
+        return query_fn(client)
 
 # Mock database for fallback local testing
 mock_transactions = [
@@ -110,17 +167,12 @@ mock_categories = [
     {"name": "Lain-lain", "emoji": "📦", "color": "#ff5555"}
 ]
 
-def get_client() -> Client:
-    if not supabase_client:
-        raise ValueError("Supabase client is not initialized. Please set SUPABASE_URL and SUPABASE_KEY in .env.")
-    return supabase_client
-
 def upload_receipt(file_bytes: bytes, file_name: str, content_type: str = "image/jpeg") -> str:
     """
     Uploads a receipt image to the 'receipts' bucket in Supabase Storage.
     Returns the public URL. If storage fails or client is mock, returns fallback URL.
     """
-    if not supabase_client:
+    if not _has_supabase_config:
         print("Mock Mode: upload_receipt called. Returning dummy placeholder image.")
         return "https://images.unsplash.com/photo-1554415707-6e8cfc93fe23?w=500"
 
@@ -148,31 +200,30 @@ def get_transactions(month: str = None):
     Get all transactions. If month is provided (format YYYY-MM),
     filter transactions for that month.
     """
-    if not supabase_client:
+    if not _has_supabase_config:
         # Sort local mock transactions descending by date and created_at
         res = sorted(mock_transactions, key=lambda t: (t["date"], t.get("created_at", "")), reverse=True)
         if month:
             res = [t for t in res if t["date"].startswith(month)]
         return res
 
-    client = get_client()
-    query = client.table("transactions").select("*").order("date", desc=True).order("created_at", desc=True)
-    
-    if month:
-        start_date = f"{month}-01"
-        year, m = map(int, month.split("-"))
-        if m == 12:
-            end_date = f"{year+1}-01-01"
-        else:
-            end_date = f"{year}-{m+1:02d}-01"
-        
-        query = query.gte("date", start_date).lt("date", end_date)
-        
-    res = query.execute()
+    def run_query(client):
+        query = client.table("transactions").select("*").order("date", desc=True).order("created_at", desc=True)
+        if month:
+            start_date = f"{month}-01"
+            year, m = map(int, month.split("-"))
+            if m == 12:
+                end_date = f"{year+1}-01-01"
+            else:
+                end_date = f"{year}-{m+1:02d}-01"
+            query = query.gte("date", start_date).lt("date", end_date)
+        return query.execute()
+
+    res = execute_with_retry(run_query)
     return res.data
 
 def create_transaction(data: dict):
-    if not supabase_client:
+    if not _has_supabase_config:
         # In-memory save
         new_tx = data.copy()
         new_tx["id"] = str(uuid.uuid4())
@@ -181,23 +232,21 @@ def create_transaction(data: dict):
         print(f"Mock Mode: Transaction created successfully: {new_tx['merchant']}")
         return new_tx
 
-    client = get_client()
-    res = client.table("transactions").insert(data).execute()
+    res = execute_with_retry(lambda c: c.table("transactions").insert(data).execute())
     return res.data[0] if res.data else None
 
 def delete_transaction(transaction_id: str):
-    if not supabase_client:
+    if not _has_supabase_config:
         global mock_transactions
         mock_transactions = [t for t in mock_transactions if t["id"] != transaction_id]
         print(f"Mock Mode: Deleted transaction: {transaction_id}")
         return [{"id": transaction_id}]
 
-    client = get_client()
-    res = client.table("transactions").delete().eq("id", transaction_id).execute()
+    res = execute_with_retry(lambda c: c.table("transactions").delete().eq("id", transaction_id).execute())
     return res.data
 
 def update_transaction(tx_id: str, merchant: str, date: str, category: str, payment_source: str, amount: float, user_name: str, items: list = None, receipt_url: str = None, transfer_to: str = None):
-    if not supabase_client:
+    if not _has_supabase_config:
         for idx, t in enumerate(mock_transactions):
             if t.get("id") == tx_id or str(t.get("id")) == tx_id:
                 mock_transactions[idx] = {
@@ -217,7 +266,6 @@ def update_transaction(tx_id: str, merchant: str, date: str, category: str, paym
                 return mock_transactions[idx]
         return None
 
-    client = get_client()
     data = {
         "merchant": merchant,
         "date": date,
@@ -229,7 +277,7 @@ def update_transaction(tx_id: str, merchant: str, date: str, category: str, paym
         "receipt_url": receipt_url,
         "transfer_to": transfer_to
     }
-    res = client.table("transactions").update(data).eq("id", tx_id).execute()
+    res = execute_with_retry(lambda c: c.table("transactions").update(data).eq("id", tx_id).execute())
     return res.data[0] if res.data else None
 
 def get_budget(month: str):
@@ -237,25 +285,23 @@ def get_budget(month: str):
     Get budget for a specific month (YYYY-MM).
     If no budget exists, return None.
     """
-    if not supabase_client:
+    if not _has_supabase_config:
         return mock_budgets.get(month)
 
-    client = get_client()
-    res = client.table("budgets").select("*").eq("month", month).execute()
+    res = execute_with_retry(lambda c: c.table("budgets").select("*").eq("month", month).execute())
     return res.data[0] if res.data else None
 
 def set_budget(month: str, amount: float, income: float = 0.0):
-    if not supabase_client:
+    if not _has_supabase_config:
         mock_budgets[month] = {"month": month, "amount": amount, "income": income}
         print(f"Mock Mode: Budget for {month} set to {amount}, income to {income}")
         return mock_budgets[month]
 
-    client = get_client()
     existing = get_budget(month)
     if existing:
-        res = client.table("budgets").update({"amount": amount, "income": income}).eq("month", month).execute()
+        res = execute_with_retry(lambda c: c.table("budgets").update({"amount": amount, "income": income}).eq("month", month).execute())
     else:
-        res = client.table("budgets").insert({"month": month, "amount": amount, "income": income}).execute()
+        res = execute_with_retry(lambda c: c.table("budgets").insert({"month": month, "amount": amount, "income": income}).execute())
     return res.data[0] if res.data else None
 
 def sort_sources(sources_list):
@@ -263,25 +309,23 @@ def sort_sources(sources_list):
     return sorted(sources_list, key=lambda x: (type_order.get(x.get('type', ''), 3), x.get('name', '').lower()))
 
 def get_payment_sources():
-    if not supabase_client:
+    if not _has_supabase_config:
         return sort_sources(mock_payment_sources)
     try:
-        client = get_client()
-        res = client.table("payment_sources").select("*").execute()
+        res = execute_with_retry(lambda c: c.table("payment_sources").select("*").execute())
         return sort_sources(res.data or [])
     except Exception as e:
         print(f"Error fetching payment_sources table: {e}. Falling back to mock sources.")
         return sort_sources(mock_payment_sources)
 
 def create_payment_source(name: str, type: str):
-    if not supabase_client:
+    if not _has_supabase_config:
         new_source = {"name": name, "type": type}
         mock_payment_sources.append(new_source)
         print(f"Mock Mode: Created payment source: {name} ({type})")
         return new_source
     try:
-        client = get_client()
-        res = client.table("payment_sources").insert({"name": name, "type": type}).execute()
+        res = execute_with_retry(lambda c: c.table("payment_sources").insert({"name": name, "type": type}).execute())
         return res.data[0] if res.data else None
     except Exception as e:
         print(f"Error creating payment source in Supabase: {e}. Saving locally in mock fallback.")
@@ -289,25 +333,23 @@ def create_payment_source(name: str, type: str):
         mock_payment_sources.append(new_source)
         return new_source
 def get_categories():
-    if not supabase_client:
+    if not _has_supabase_config:
         return mock_categories
     try:
-        client = get_client()
-        res = client.table("categories").select("*").order("name").execute()
+        res = execute_with_retry(lambda c: c.table("categories").select("*").order("name").execute())
         return res.data
     except Exception as e:
         print(f"Error fetching categories table: {e}. Falling back to mock categories.")
         return mock_categories
 
 def create_category(name: str, emoji: str = "📦", color: str = "#ff5555"):
-    if not supabase_client:
+    if not _has_supabase_config:
         new_cat = {"name": name, "emoji": emoji, "color": color}
         mock_categories.append(new_cat)
         print(f"Mock Mode: Created category: {name}")
         return new_cat
     try:
-        client = get_client()
-        res = client.table("categories").insert({"name": name, "emoji": emoji, "color": color}).execute()
+        res = execute_with_retry(lambda c: c.table("categories").insert({"name": name, "emoji": emoji, "color": color}).execute())
         return res.data[0] if res.data else None
     except Exception as e:
         print(f"Error creating category in Supabase: {e}. Saving locally in mock fallback.")
@@ -322,11 +364,10 @@ def get_balances():
     sources = get_payment_sources()
     balances = {s["name"]: 0.0 for s in sources}
 
-    if not supabase_client:
+    if not _has_supabase_config:
         txs = mock_transactions
     else:
-        client = get_client()
-        res = client.table("transactions").select("category, payment_source, transfer_to, amount").execute()
+        res = execute_with_retry(lambda c: c.table("transactions").select("category, payment_source, transfer_to, amount").execute())
         txs = res.data or []
 
     for t in txs:
@@ -380,14 +421,13 @@ def get_cumulative_net_balance(selected_month: str):
         end_date = f"{year}-{m+1:02d}-01"
         
     # 2. Get all transactions up to end_date
-    if not supabase_client:
+    if not _has_supabase_config:
         all_txs = [t for t in mock_transactions if t["date"] < end_date]
         budgets = list(mock_budgets.values())
     else:
-        client = get_client()
-        res = client.table("transactions").select("*").lt("date", end_date).execute()
+        res = execute_with_retry(lambda c: c.table("transactions").select("*").lt("date", end_date).execute())
         all_txs = res.data
-        res_b = client.table("budgets").select("*").lte("month", selected_month).execute()
+        res_b = execute_with_retry(lambda c: c.table("budgets").select("*").lte("month", selected_month).execute())
         budgets = res_b.data
 
     # Map budget planned incomes
