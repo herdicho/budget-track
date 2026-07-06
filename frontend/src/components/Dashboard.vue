@@ -27,7 +27,7 @@
           <div>
             <span class="section-subtitle">Sisa Anggaran Belanja</span>
             <h1 class="remaining-value" :class="{ 'warning-text': remainingPercent < 20, 'danger-text': remainingPercent <= 0 }">
-              {{ formatCurrency(summary.remaining) }}
+              {{ formatCurrency(remainingForBudget) }}
             </h1>
           </div>
           <div>
@@ -67,7 +67,7 @@
         </div>
         <div class="budget-grid-item text-right">
           <span class="grid-item-label">Total Terpakai</span>
-          <span class="grid-item-val font-danger">{{ formatCurrency(summary.total_spent) }}</span>
+          <span class="grid-item-val font-danger">{{ formatCurrency(spentForBudget) }}</span>
         </div>
       </div>
     </section>
@@ -156,7 +156,7 @@
       </div>
     </section>
 
-    <!-- Payment Source Accounts Breakdown -->
+    <!-- Payment Source Accounts Breakdown (Hidden for now)
     <section v-if="hasSources" class="sources-card glass-panel">
       <h3 class="section-title">Sumber Dana Terpakai</h3>
       <div class="sources-list">
@@ -169,6 +169,7 @@
         </div>
       </div>
     </section>
+    -->
 
     <!-- User Spending Breakdown (Suami vs Istri) -->
     <section class="users-card glass-panel" v-if="summary.users">
@@ -398,14 +399,27 @@ export default {
     const budgetInputRef = ref(null)
 
     // Percentage Computations
+    const spentForBudget = computed(() => {
+      const total = summary.value.total_spent || 0
+      const cats = summary.value.categories || {}
+      const keluargaKey = Object.keys(cats).find(k => k.toLowerCase() === 'keluarga')
+      const keluargaSpent = keluargaKey ? (cats[keluargaKey] || 0) : 0
+      return Math.max(0, total - keluargaSpent)
+    })
+
+    const remainingForBudget = computed(() => {
+      const budget = summary.value.budget || 0
+      return Math.max(0, budget - spentForBudget.value)
+    })
+
     const spentPercent = computed(() => {
       if (summary.value.budget <= 0) return 0
-      return (summary.value.total_spent / summary.value.budget) * 100
+      return (spentForBudget.value / summary.value.budget) * 100
     })
 
     const remainingPercent = computed(() => {
       if (summary.value.budget <= 0) return 100
-      return Math.max(0, (summary.value.remaining / summary.value.budget) * 100)
+      return Math.max(0, (remainingForBudget.value / summary.value.budget) * 100)
     })
 
     const hasCategories = computed(() => {
@@ -425,6 +439,8 @@ export default {
         })
         if (response.ok) {
           summary.value = await response.json()
+          emit('refresh-sources')
+          emit('refresh-categories')
         }
       } catch (err) {
         console.error("Failed to fetch summary:", err)
@@ -672,6 +688,8 @@ export default {
       summary,
       spentPercent,
       remainingPercent,
+      spentForBudget,
+      remainingForBudget,
       hasCategories,
       hasSources,
       editingBudget,
