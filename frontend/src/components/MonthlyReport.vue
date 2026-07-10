@@ -59,7 +59,7 @@
           <div class="metric-info">
             <span class="metric-label">Batas Anggaran Belanja</span>
             <div class="compliance-header">
-              <span class="metric-val small-val">{{ formatCurrency(summary.total_spent) }} / {{ formatCurrency(summary.budget) }}</span>
+              <span class="metric-val small-val">{{ formatCurrency(spentForBudget) }} / {{ formatCurrency(summary.budget) }}</span>
               <span class="status-tag" :class="budgetStatusClass">{{ budgetStatusLabel }}</span>
             </div>
             <div class="compliance-progress">
@@ -107,7 +107,7 @@
               />
               <!-- Center Label -->
               <text x="70" y="65" text-anchor="middle" class="donut-center-title">TOTAL BELANJA</text>
-              <text x="70" y="85" text-anchor="middle" class="donut-center-value">{{ formatCurrencyShort(summary.total_spent) }}</text>
+              <text x="70" y="85" text-anchor="middle" class="donut-center-value">{{ formatCurrencyShort(spentForBudget) }}</text>
             </svg>
           </div>
 
@@ -124,7 +124,68 @@
         </div>
       </section>
 
-      <!-- 3. Secondary Reports (Side-by-side Below) -->
+      <!-- 3. Weekly Spending Breakdown -->
+      <section class="chart-card glass-panel full-width-chart">
+        <h3 class="section-title">📅 Pengeluaran per Minggu</h3>
+        
+        <div v-if="weeklyData.length === 0" class="empty-state">
+          Tidak ada data pengeluaran bulan ini.
+        </div>
+
+        <div v-else class="weekly-breakdown">
+          <div v-for="week in weeklyData" :key="week.label" class="weekly-row-container">
+            <!-- Clickable Week Row -->
+            <div class="weekly-row" :class="{ 'has-data': week.total > 0 }" @click="toggleWeek(week.label)">
+              <div class="weekly-info">
+                <span class="weekly-label">
+                  <span class="weekly-chevron" :class="{ 'expanded': expandedWeeks[week.label] }">›</span>
+                  {{ week.label }}
+                </span>
+                <span class="weekly-date-range">{{ week.dateRange }}</span>
+              </div>
+              <div class="weekly-bar-wrapper">
+                <div class="weekly-bar-track">
+                  <div 
+                    v-if="week.total > 0"
+                    class="weekly-bar-fill" 
+                    :style="{ width: `${week.percent}%` }"
+                  ></div>
+                </div>
+                <span class="weekly-amount" :class="{ 'has-value': week.total > 0 }">{{ formatCurrencyShort(week.total) }}</span>
+              </div>
+            </div>
+
+            <!-- Collapsible Transaction Details -->
+            <Transition name="collapse">
+              <div v-if="expandedWeeks[week.label] && week.transactions.length > 0" class="weekly-details">
+                <div v-for="tx in week.transactions" :key="tx.id" class="weekly-tx-item">
+                  <div class="weekly-tx-left">
+                    <span class="weekly-tx-emoji">{{ getCategoryEmoji(tx.category) }}</span>
+                    <div class="weekly-tx-info">
+                      <span class="weekly-tx-merchant">{{ tx.merchant }}</span>
+                      <span class="weekly-tx-meta">{{ formatDateShort(tx.date) }} • {{ tx.payment_source }}</span>
+                    </div>
+                  </div>
+                  <span class="weekly-tx-amount">{{ formatCurrencyShort(tx.amount) }}</span>
+                </div>
+              </div>
+            </Transition>
+
+            <!-- Empty state for expanded week with no data -->
+            <div v-if="expandedWeeks[week.label] && week.transactions.length === 0" class="weekly-details-empty">
+              Tidak ada pengeluaran di minggu ini.
+            </div>
+          </div>
+
+          <!-- Weekly Total Summary -->
+          <div class="weekly-summary">
+            <span class="weekly-summary-label">Rata-rata / minggu</span>
+            <span class="weekly-summary-value">{{ formatCurrency(weeklyAverage) }}</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. Secondary Reports (Side-by-side Below) -->
       <div class="secondary-charts-layout">
         <!-- Split card -->
         <section class="chart-card glass-panel">
@@ -227,12 +288,92 @@ export default {
       }
     }
 
-    onMounted(() => {
-      fetchReportData()
-    })
-
     watch(selectedMonth, () => {
       fetchReportData()
+      fetchTransactionsForWeekly()
+    })
+
+    // Fetch transactions for weekly breakdown
+    const monthTransactions = ref([])
+
+    const fetchTransactionsForWeekly = async () => {
+      try {
+        const response = await fetch(`${props.apiUrl}/api/transactions?month=${selectedMonth.value}`, {
+          headers: {
+            'X-App-Password': props.authPassword
+          }
+        })
+        if (response.ok) {
+          monthTransactions.value = await response.json()
+        }
+      } catch (err) {
+        console.error("Error fetching transactions for weekly:", err)
+      }
+    }
+
+    onMounted(() => {
+      fetchReportData()
+      fetchTransactionsForWeekly()
+    })
+
+    // Weekly spending calculation
+    const expandedWeeks = ref({})
+
+    const toggleWeek = (label) => {
+      expandedWeeks.value[label] = !expandedWeeks.value[label]
+    }
+
+    const weeklyData = computed(() => {
+      const txs = monthTransactions.value || []
+      // Filter out transfers, income, saldo awal, AND keluarga
+      const expenses = txs.filter(t => !['Transfer', 'Pendapatan', 'Saldo Awal', 'Keluarga'].includes(t.category))
+      
+      if (expenses.length === 0) return []
+
+      const weeks = [
+        { label: 'Minggu 1', start: 4, end: 10, dateRange: 'Tgl 4 - 10', total: 0, transactions: [] },
+        { label: 'Minggu 2', start: 11, end: 17, dateRange: 'Tgl 11 - 17', total: 0, transactions: [] },
+        { label: 'Minggu 3', start: 18, end: 24, dateRange: 'Tgl 18 - 24', total: 0, transactions: [] },
+        { label: 'Minggu 4', start: 25, end: 31, dateRange: 'Tgl 25 - 31', total: 0, transactions: [] }
+      ]
+
+      for (const tx of expenses) {
+        const day = new Date(tx.date).getDate()
+        const amount = parseFloat(tx.amount) || 0
+        for (const w of weeks) {
+          if (day >= w.start && day <= w.end) {
+            w.total += amount
+            w.transactions.push(tx)
+            break
+          }
+        }
+      }
+
+      // Sort transactions within each week by date descending
+      for (const w of weeks) {
+        w.transactions.sort((a, b) => new Date(b.date) - new Date(a.date))
+      }
+
+      // Find max for bar scaling
+      const maxTotal = Math.max(...weeks.map(w => w.total), 1)
+
+      return weeks.map(w => ({
+          ...w,
+          percent: w.total > 0 ? Math.max(Math.round((w.total / maxTotal) * 100), 3) : 0
+        }))
+    })
+
+    const formatDateShort = (dateStr) => {
+      if (!dateStr) return ''
+      const d = new Date(dateStr)
+      return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })
+    }
+
+    const weeklyAverage = computed(() => {
+      const data = weeklyData.value.filter(w => w.total > 0)
+      if (data.length === 0) return 0
+      const total = data.reduce((sum, w) => sum + w.total, 0)
+      return Math.round(total / data.length)
     })
 
     const changeMonth = (offset) => {
@@ -261,10 +402,11 @@ export default {
     const formatCurrencyShort = (val) => {
       if (!val) return 'Rp 0'
       if (val >= 1000000) {
-        return `Rp ${(val / 1000000).toFixed(1)}jt`
+        const jt = val / 1000000
+        return `Rp ${jt % 1 === 0 ? jt.toFixed(0) : jt.toFixed(1)}jt`
       }
       if (val >= 1000) {
-        return `Rp ${(val / 1000).toFixed(0)}rb`
+        return `Rp ${Math.round(val / 1000)}rb`
       }
       return `Rp ${val}`
     }
@@ -303,22 +445,30 @@ export default {
       return emojis[catName] || '💰'
     }
 
-    // Calculations
+    // Calculations - exclude Keluarga from budget
+    const spentForBudget = computed(() => {
+      const total = summary.value.total_spent || 0
+      const cats = summary.value.categories || {}
+      const keluargaKey = Object.keys(cats).find(k => k.toLowerCase() === 'keluarga')
+      const keluargaSpent = keluargaKey ? (cats[keluargaKey] || 0) : 0
+      return Math.max(0, total - keluargaSpent)
+    })
+
     const budgetSpentPercent = computed(() => {
       const limit = summary.value.budget || 0
       if (limit <= 0) return 0
-      return Math.min(Math.round((summary.value.total_spent / limit) * 100), 100)
+      return Math.min(Math.round((spentForBudget.value / limit) * 100), 100)
     })
 
     const budgetStatusClass = computed(() => {
-      const percent = (summary.value.total_spent / (summary.value.budget || 1)) * 100
+      const percent = (spentForBudget.value / (summary.value.budget || 1)) * 100
       if (percent > 100) return 'danger'
       if (percent > 85) return 'warning'
       return 'success'
     })
 
     const budgetStatusLabel = computed(() => {
-      const percent = (summary.value.total_spent / (summary.value.budget || 1)) * 100
+      const percent = (spentForBudget.value / (summary.value.budget || 1)) * 100
       if (percent > 100) return 'Over Budget 🚨'
       if (percent > 85) return 'Waspada ⚠️'
       return 'Hemat 👍'
@@ -334,27 +484,28 @@ export default {
     // SVG Donut segments calculations
     const chartSegments = computed(() => {
       const cats = summary.value.categories || {}
-      const total = Object.values(cats).reduce((a, b) => a + b, 0)
+      // Exclude Keluarga from chart
+      const filteredCats = Object.entries(cats).filter(([name]) => name.toLowerCase() !== 'keluarga')
+      const total = filteredCats.reduce((a, [, b]) => a + b, 0)
       if (total <= 0) return []
 
-      let currentOffset = 0
+      let cumulativeOffset = 0
       const circumference = 2 * Math.PI * 50 // 314.159
 
-      return Object.entries(cats).map(([name, amount]) => {
+      return filteredCats.map(([name, amount]) => {
         const percentage = (amount / total) * 100
-        const dashLength = (amount / total) * circumference
-        const strokeDashoffset = circumference - currentOffset
-        currentOffset += dashLength
-
-        return {
+        const segLen = (amount / total) * circumference
+        const seg = {
           name,
           amount,
           percentage: Math.round(percentage),
-          strokeDasharray: `${dashLength} ${circumference}`,
-          strokeDashoffset,
+          strokeDasharray: `${segLen} ${circumference - segLen}`,
+          strokeDashoffset: `${-cumulativeOffset}`,
           color: getCategoryColor(name),
           emoji: getCategoryEmoji(name)
         }
+        cumulativeOffset += segLen
+        return seg
       })
     })
 
@@ -410,10 +561,12 @@ export default {
       selectedMonth,
       loading,
       summary,
+      spentForBudget,
       changeMonth,
       formatMonthLabel,
       formatCurrency,
       formatCurrencyShort,
+      formatDateShort,
       getCategoryColor,
       getCategoryEmoji,
       budgetSpentPercent,
@@ -421,6 +574,10 @@ export default {
       budgetStatusLabel,
       userSpentPercent,
       chartSegments,
+      weeklyData,
+      weeklyAverage,
+      expandedWeeks,
+      toggleWeek,
       insightEmoji,
       insightTitle,
       insightDescription
@@ -832,5 +989,214 @@ export default {
   .secondary-charts-layout {
     grid-template-columns: 1fr;
   }
+}
+
+/* Weekly Breakdown */
+.weekly-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.weekly-row-container {
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.weekly-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.weekly-row:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.weekly-row.has-data {
+  cursor: pointer;
+}
+
+.weekly-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.weekly-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.weekly-chevron {
+  display: inline-block;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text-muted);
+  transition: transform 0.25s ease;
+  transform: rotate(0deg);
+  width: 12px;
+  text-align: center;
+}
+
+.weekly-chevron.expanded {
+  transform: rotate(90deg);
+  color: var(--text-primary);
+}
+
+.weekly-date-range {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.weekly-bar-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.weekly-bar-track {
+  flex: 1;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.weekly-bar-fill {
+  height: 100%;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #8b5cf6 0%, #d946ef 100%);
+  transition: width 0.4s ease;
+}
+
+.weekly-amount {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  min-width: 70px;
+  text-align: right;
+}
+
+.weekly-amount.has-value {
+  color: var(--text-primary);
+}
+
+/* Collapsible Details */
+.weekly-details {
+  padding: 0 12px 12px 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.weekly-details-empty {
+  padding: 8px 12px 12px 30px;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.weekly-tx-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.weekly-tx-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.weekly-tx-emoji {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.weekly-tx-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.weekly-tx-merchant {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.weekly-tx-meta {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.weekly-tx-amount {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+/* Collapse transition */
+.collapse-enter-active,
+.collapse-leave-active {
+  transition: all 0.25s ease;
+  overflow: hidden;
+}
+
+.collapse-enter-from,
+.collapse-leave-to {
+  opacity: 0;
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.collapse-enter-to,
+.collapse-leave-from {
+  opacity: 1;
+  max-height: 500px;
+}
+
+.weekly-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--glass-border);
+}
+
+.weekly-summary-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.weekly-summary-value {
+  font-size: 14px;
+  font-weight: 800;
+  color: #8be9fd;
 }
 </style>

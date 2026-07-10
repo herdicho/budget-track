@@ -62,39 +62,77 @@
         Tidak ada transaksi yang cocok dengan filter.
       </div>
 
-      <div v-else class="transactions-list">
-        <div v-for="tx in filteredTransactions" :key="tx.id" class="tx-item">
-          <div class="tx-left">
-            <div class="tx-category-icon" :style="{ background: getCategoryColor(tx.category) + '22', color: getCategoryColor(tx.category) }">
-              {{ getCategoryEmoji(tx.category) }}
+      <div v-else>
+        <!-- Info count -->
+        <div class="pagination-info">
+          Menampilkan {{ paginationStart }}-{{ paginationEnd }} dari {{ filteredTransactions.length }} transaksi
+        </div>
+
+        <div class="transactions-list">
+          <div v-for="tx in paginatedTransactions" :key="tx.id" class="tx-item">
+            <div class="tx-left">
+              <div class="tx-category-icon" :style="{ background: getCategoryColor(tx.category) + '22', color: getCategoryColor(tx.category) }">
+                {{ getCategoryEmoji(tx.category) }}
+              </div>
+              <div class="tx-details">
+                <span class="tx-merchant">
+                  {{ tx.merchant }}
+                  <span class="tx-user-badge" :class="tx.user_name?.toLowerCase() === 'istri' ? 'istri-badge' : 'suami-badge'">
+                    {{ tx.user_name === 'Istri' ? 'I' : 'S' }}
+                  </span>
+                </span>
+                <span class="tx-meta">
+                  {{ formatDateFull(tx.date) }} &bull; 
+                  <span v-if="tx.category === 'Transfer'">
+                    {{ tx.payment_source }} ➔ {{ tx.transfer_to }}
+                  </span>
+                  <span v-else>
+                    {{ tx.payment_source }}
+                  </span>
+                </span>
+              </div>
             </div>
-            <div class="tx-details">
-              <span class="tx-merchant">
-                {{ tx.merchant }}
-                <span class="tx-user-badge" :class="tx.user_name?.toLowerCase() === 'istri' ? 'istri-badge' : 'suami-badge'">
-                  {{ tx.user_name === 'Istri' ? 'I' : 'S' }}
-                </span>
-              </span>
-              <span class="tx-meta">
-                {{ formatDateFull(tx.date) }} &bull; 
-                <span v-if="tx.category === 'Transfer'">
-                  {{ tx.payment_source }} ➔ {{ tx.transfer_to }}
-                </span>
-                <span v-else>
-                  {{ tx.payment_source }}
-                </span>
-              </span>
+            <div class="tx-right">
+              <span class="tx-amount">{{ formatCurrency(tx.amount) }}</span>
+              <button @click="$emit('trigger-edit', tx)" class="edit-tx-btn" title="Ubah" style="background: transparent; border: none; color: #8be9fd; cursor: pointer; padding: 4px; margin-right: 8px; transition: all 0.2s ease; display: inline-flex; align-items: center; justify-content: center;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="16 3 21 8 8 21 3 21 3 16 16 3"></polygon></svg>
+              </button>
+              <button @click="deleteTransaction(tx.id)" class="delete-tx-btn" title="Hapus">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+              </button>
             </div>
           </div>
-          <div class="tx-right">
-            <span class="tx-amount">{{ formatCurrency(tx.amount) }}</span>
-            <button @click="$emit('trigger-edit', tx)" class="edit-tx-btn" title="Ubah" style="background: transparent; border: none; color: #8be9fd; cursor: pointer; padding: 4px; margin-right: 8px; transition: all 0.2s ease; display: inline-flex; align-items: center; justify-content: center;">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="16 3 21 8 8 21 3 21 3 16 16 3"></polygon></svg>
-            </button>
-            <button @click="deleteTransaction(tx.id)" class="delete-tx-btn" title="Hapus">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+        </div>
+
+        <!-- Pagination Controls -->
+        <div v-if="totalPages > 1" class="pagination-controls">
+          <button 
+            @click="goToPage(currentPage - 1)" 
+            :disabled="currentPage === 1" 
+            class="page-btn nav-page-btn"
+          >
+            &larr; Prev
+          </button>
+          
+          <div class="page-numbers">
+            <button 
+              v-for="page in visiblePages" 
+              :key="page" 
+              @click="goToPage(page)" 
+              class="page-btn" 
+              :class="{ 'active-page': page === currentPage }"
+            >
+              {{ page }}
             </button>
           </div>
+
+          <button 
+            @click="goToPage(currentPage + 1)" 
+            :disabled="currentPage === totalPages" 
+            class="page-btn nav-page-btn"
+          >
+            Next &rarr;
+          </button>
         </div>
       </div>
     </section>
@@ -102,7 +140,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 
 export default {
   name: 'TransactionList',
@@ -131,10 +169,8 @@ export default {
     const selectedCategory = ref('')
     const selectedSource = ref('')
     const selectedUser = ref('')
-
-    // categories is received dynamically as a prop
-
-    // paymentSources is received as a prop
+    const currentPage = ref(1)
+    const itemsPerPage = 15
 
     const fetchTransactions = async () => {
       try {
@@ -165,6 +201,61 @@ export default {
         return matchSearch && matchCategory && matchSource && matchUser
       })
     })
+
+    // Reset page when filters change
+    watch([searchQuery, selectedCategory, selectedSource, selectedUser], () => {
+      currentPage.value = 1
+    })
+
+    const totalPages = computed(() => {
+      return Math.max(1, Math.ceil(filteredTransactions.value.length / itemsPerPage))
+    })
+
+    const paginatedTransactions = computed(() => {
+      const start = (currentPage.value - 1) * itemsPerPage
+      const end = start + itemsPerPage
+      return filteredTransactions.value.slice(start, end)
+    })
+
+    const paginationStart = computed(() => {
+      if (filteredTransactions.value.length === 0) return 0
+      return (currentPage.value - 1) * itemsPerPage + 1
+    })
+
+    const paginationEnd = computed(() => {
+      return Math.min(currentPage.value * itemsPerPage, filteredTransactions.value.length)
+    })
+
+    const visiblePages = computed(() => {
+      const pages = []
+      const total = totalPages.value
+      const current = currentPage.value
+      
+      let start = Math.max(1, current - 2)
+      let end = Math.min(total, current + 2)
+      
+      // Ensure we always show 5 pages if available
+      if (end - start < 4) {
+        if (start === 1) {
+          end = Math.min(total, start + 4)
+        } else {
+          start = Math.max(1, end - 4)
+        }
+      }
+      
+      for (let i = start; i <= end; i++) {
+        pages.push(i)
+      }
+      return pages
+    })
+
+    const goToPage = (page) => {
+      if (page >= 1 && page <= totalPages.value) {
+        currentPage.value = page
+        // Scroll to top of list
+        document.querySelector('.list-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+    }
 
     const formatCurrency = (val) => {
       return new Intl.NumberFormat('id-ID', {
@@ -238,7 +329,14 @@ export default {
       selectedCategory,
       selectedSource,
       selectedUser,
+      currentPage,
+      totalPages,
       filteredTransactions,
+      paginatedTransactions,
+      paginationStart,
+      paginationEnd,
+      visiblePages,
+      goToPage,
       formatCurrency,
       formatDateFull,
       getCategoryColor,
@@ -442,5 +540,65 @@ export default {
   background: rgba(236, 72, 153, 0.15);
   color: #f472b6;
   border: 1px solid rgba(236, 72, 153, 0.3);
+}
+
+/* Pagination */
+.pagination-info {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.pagination-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.page-numbers {
+  display: flex;
+  gap: 4px;
+}
+
+.page-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 36px;
+  text-align: center;
+}
+
+.page-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+.page-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.page-btn.active-page {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
+}
+
+.nav-page-btn {
+  font-size: 11px;
+  padding: 6px 10px;
 }
 </style>

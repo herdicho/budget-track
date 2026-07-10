@@ -199,10 +199,10 @@
       </div>
     </section>
 
-    <!-- Categories Breakdown -->
+    <!-- Categories Breakdown with Donut Chart -->
     <section class="categories-card glass-panel">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-        <h3 class="section-title" style="margin-bottom: 0;">Pengeluaran per Kategori</h3>
+        <h3 class="section-title" style="margin-bottom: 0;">Proporsi Pengeluaran Kategori</h3>
         <button @click="showAddCategoryForm = !showAddCategoryForm" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px; width: auto; height: auto; min-height: unset; margin: 0;">
           {{ showAddCategoryForm ? 'Batal' : '+ Kategori' }}
         </button>
@@ -257,20 +257,48 @@
         Belum ada transaksi di bulan ini.
       </div>
       
-      <div v-else class="categories-list">
-        <div v-for="(amount, cat) in summary.categories" :key="cat" class="category-item">
-          <div class="category-info">
-            <span class="category-name-wrapper">
-              <span class="category-bullet" :style="{ backgroundColor: getCategoryColor(cat) }"></span>
-              {{ cat }}
-            </span>
-            <span class="category-amount">{{ formatCurrency(amount) }} ({{ getCategoryPercent(amount) }}%)</span>
-          </div>
-          <div class="category-progress-track">
-            <div 
-              class="category-progress-fill" 
-              :style="{ width: `${getCategoryPercent(amount)}%`, backgroundColor: getCategoryColor(cat) }"
-            ></div>
+      <div v-else class="chart-donut-container">
+        <!-- SVG Donut Chart -->
+        <div class="donut-wrapper">
+          <svg width="220" height="220" viewBox="0 0 140 140" class="donut-svg">
+            <!-- Background circle -->
+            <circle 
+              cx="70" 
+              cy="70" 
+              r="50" 
+              fill="transparent" 
+              stroke="rgba(255, 255, 255, 0.05)" 
+              stroke-width="14" 
+            />
+            <!-- Segment circles -->
+            <circle 
+              v-for="seg in chartSegments" 
+              :key="seg.name" 
+              cx="70" 
+              cy="70" 
+              r="50" 
+              fill="transparent" 
+              :stroke="seg.color" 
+              stroke-width="14" 
+              :stroke-dasharray="seg.strokeDasharray" 
+              :stroke-dashoffset="seg.strokeDashoffset" 
+              transform="rotate(-90 70 70)"
+              class="donut-segment"
+            />
+            <!-- Center Label -->
+            <text x="70" y="65" text-anchor="middle" class="donut-center-title">TOTAL BELANJA</text>
+            <text x="70" y="85" text-anchor="middle" class="donut-center-value">{{ formatCurrencyShort(spentForBudget) }}</text>
+          </svg>
+        </div>
+
+        <!-- Legend List -->
+        <div class="legend-list">
+          <div v-for="seg in chartSegments" :key="seg.name" class="legend-item">
+            <span class="legend-bullet" :style="{ backgroundColor: seg.color }"></span>
+            <span class="legend-emoji">{{ seg.emoji }}</span>
+            <span class="legend-name">{{ seg.name }}</span>
+            <span class="legend-percent">{{ seg.percentage }}%</span>
+            <span class="legend-value">{{ formatCurrencyShort(seg.amount) }}</span>
           </div>
         </div>
       </div>
@@ -490,6 +518,46 @@ export default {
       return Math.round((amount / summary.value.total_spent) * 100)
     }
 
+    const formatCurrencyShort = (val) => {
+      if (!val) return 'Rp 0'
+      if (val >= 1000000) {
+        const jt = val / 1000000
+        return `Rp ${jt % 1 === 0 ? jt.toFixed(0) : jt.toFixed(1)}jt`
+      }
+      if (val >= 1000) {
+        return `Rp ${Math.round(val / 1000)}rb`
+      }
+      return `Rp ${val}`
+    }
+
+    // SVG Donut segments calculations
+    const chartSegments = computed(() => {
+      const cats = summary.value.categories || {}
+      // Exclude Keluarga from chart (same as budget)
+      const filteredCats = Object.entries(cats).filter(([name]) => name.toLowerCase() !== 'keluarga')
+      const total = filteredCats.reduce((a, [, b]) => a + b, 0)
+      if (total <= 0) return []
+
+      let cumulativeOffset = 0
+      const circumference = 2 * Math.PI * 50 // 314.159
+
+      return filteredCats.map(([name, amount]) => {
+        const percentage = (amount / total) * 100
+        const segLen = (amount / total) * circumference
+        const seg = {
+          name,
+          amount,
+          percentage: Math.round(percentage),
+          strokeDasharray: `${segLen} ${circumference - segLen}`,
+          strokeDashoffset: `${-cumulativeOffset}`,
+          color: getCategoryColor(name),
+          emoji: getCategoryEmoji(name)
+        }
+        cumulativeOffset += segLen
+        return seg
+      })
+    })
+
     const getCategoryColor = (catName) => {
       if (!catName) return '#ff5555'
       const cat = props.categories.find(c => c.name && c.name.toLowerCase() === catName.toLowerCase())
@@ -700,6 +768,7 @@ export default {
       changeMonth,
       formatMonthLabel,
       formatCurrency,
+      formatCurrencyShort,
       formatDateShort,
       getCategoryPercent,
       getUserPercent,
@@ -711,6 +780,7 @@ export default {
       triggerManualAdd,
       deleteTransaction,
       fetchSummary,
+      chartSegments,
       newSourceName,
       newSourceType,
       addingSource,
@@ -1063,55 +1133,81 @@ export default {
   padding: 20px;
 }
 
-.categories-list {
+/* Donut Chart */
+.chart-donut-container {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  align-items: center;
+  gap: 20px;
+  margin-top: 10px;
 }
 
-.category-item {
+.donut-wrapper {
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+
+.donut-segment {
+  transition: stroke-dashoffset 0.4s ease;
+}
+
+.donut-center-title {
+  font-size: 7px;
+  font-weight: 600;
+  fill: var(--text-muted);
+}
+
+.donut-center-value {
+  font-size: 12px;
+  font-weight: 800;
+  fill: var(--text-primary);
+}
+
+.legend-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 10px;
+  width: 100%;
+  border-top: 1px solid var(--glass-border);
+  padding-top: 16px;
 }
 
-.category-info {
-  display: flex;
-  justify-content: space-between;
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.category-name-wrapper {
+.legend-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 500;
+  width: 100%;
 }
 
-.category-bullet {
+.legend-bullet {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  display: inline-block;
+  margin-right: 8px;
+  flex-shrink: 0;
 }
 
-.category-amount {
-  color: var(--text-secondary);
+.legend-emoji {
+  margin-right: 8px;
 }
 
-.category-progress-track {
-  width: 100%;
-  height: 6px;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 3px;
-  overflow: hidden;
+.legend-name {
+  color: var(--text-muted);
+  flex-grow: 1;
 }
 
-.category-progress-fill {
-  height: 100%;
-  border-radius: 3px;
-  transition: width 0.4s ease;
+.legend-percent {
+  font-weight: 700;
+  margin-right: 12px;
+  width: 32px;
+  text-align: right;
+}
+
+.legend-value {
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 .empty-state {
