@@ -8,7 +8,17 @@
       <div class="header-placeholder"></div>
     </header>
 
-    <!-- Filters Section -->
+    <!-- Beautiful Content Loader -->
+    <div v-if="loading" class="loading-view">
+      <div class="loader-glow-ring">
+        <span class="loader-icon">📜</span>
+      </div>
+      <h3 class="loading-text">Memuat Riwayat Transaksi...</h3>
+      <p class="loading-subtext">Mengambil daftar transaksi dari database</p>
+    </div>
+
+    <template v-else>
+      <!-- Filters Section -->
     <section class="filters-card glass-panel">
       <div class="form-row">
         <div class="form-group half">
@@ -136,6 +146,7 @@
         </div>
       </div>
     </section>
+    </template>
   </div>
 </template>
 
@@ -164,6 +175,7 @@ export default {
   },
   emits: ['back', 'trigger-edit'],
   setup(props) {
+    const loading = ref(true)
     const transactions = ref([])
     const searchQuery = ref('')
     const selectedCategory = ref('')
@@ -173,6 +185,7 @@ export default {
     const itemsPerPage = 15
 
     const fetchTransactions = async () => {
+      loading.value = true
       try {
         const response = await fetch(`${props.apiUrl}/api/transactions`, {
           headers: {
@@ -184,6 +197,8 @@ export default {
         }
       } catch (err) {
         console.error("Error fetching transactions:", err)
+      } finally {
+        loading.value = false
       }
     }
 
@@ -324,6 +339,7 @@ export default {
     }
 
     return {
+      loading,
       transactions,
       searchQuery,
       selectedCategory,

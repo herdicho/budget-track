@@ -20,7 +20,17 @@
       </div>
     </header>
 
-    <!-- Main Budget Progress Card -->
+    <!-- Beautiful Content Loader -->
+    <div v-if="loading" class="loading-view">
+      <div class="loader-glow-ring">
+        <span class="loader-icon">💰</span>
+      </div>
+      <h3 class="loading-text">Menghubungkan ke Database...</h3>
+      <p class="loading-subtext">Memuat ringkasan keuangan dan anggaran Anda</p>
+    </div>
+
+    <template v-else>
+      <!-- Main Budget Progress Card -->
     <section class="budget-card glass-panel">
       <div class="budget-header">
         <div style="display: flex; gap: 32px; flex-wrap: wrap;">
@@ -349,6 +359,7 @@
         </div>
       </div>
     </section>
+    </template>
 
     <!-- Inline Budget Edit Modal -->
     <div v-if="editingBudget" class="modal-overlay" @click.self="editingBudget = false">
@@ -406,6 +417,7 @@ export default {
   },
   emits: ['logout', 'trigger-upload', 'trigger-manual', 'trigger-report', 'trigger-edit', 'refresh-sources', 'refresh-categories', 'view-all'],
   setup(props, { emit }) {
+    const loading = ref(true)
     const currentMonth = ref(new Date().toISOString().substring(0, 7)) // Format: YYYY-MM
     const summary = ref({
       month: currentMonth.value,
@@ -459,6 +471,7 @@ export default {
     })
 
     const fetchSummary = async () => {
+      loading.value = true
       try {
         const response = await fetch(`${props.apiUrl}/api/dashboard/summary?month=${currentMonth.value}`, {
           headers: {
@@ -472,6 +485,8 @@ export default {
         }
       } catch (err) {
         console.error("Failed to fetch summary:", err)
+      } finally {
+        loading.value = false
       }
     }
 
@@ -780,6 +795,7 @@ export default {
       triggerManualAdd,
       deleteTransaction,
       fetchSummary,
+      loading,
       chartSegments,
       newSourceName,
       newSourceType,

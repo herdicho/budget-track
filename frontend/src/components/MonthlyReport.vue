@@ -16,9 +16,12 @@
     </header>
 
     <!-- Main Content Loader -->
-    <div v-if="loading" class="loader-container">
-      <div class="spinner"></div>
-      <p>Memuat laporan keuangan...</p>
+    <div v-if="loading" class="loading-view">
+      <div class="loader-glow-ring">
+        <span class="loader-icon">📊</span>
+      </div>
+      <h3 class="loading-text">Memuat Laporan Keuangan...</h3>
+      <p class="loading-subtext">Menganalisis pengeluaran dan pemasukan Anda</p>
     </div>
 
     <div v-else class="report-content">
@@ -649,15 +652,7 @@ export default {
   text-align: center;
 }
 
-.loader-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 80px 0;
-  gap: 16px;
-  color: var(--text-muted);
-}
+/* Unused .loader-container styling removed in favor of global .loading-view */
 
 .metrics-grid {
   display: grid;
