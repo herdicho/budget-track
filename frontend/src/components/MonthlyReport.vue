@@ -129,7 +129,28 @@
 
       <!-- 3. Weekly Spending Breakdown -->
       <section class="chart-card glass-panel full-width-chart">
-        <h3 class="section-title">📅 Pengeluaran per Minggu</h3>
+        <div class="weekly-header">
+          <h3 class="section-title">📅 Pengeluaran per Minggu</h3>
+          <div class="weekly-sort-controls">
+            <span class="sort-label">Urutkan detail:</span>
+            <button 
+              class="sort-btn" 
+              :class="{ active: weeklySortBy === 'chronological' }" 
+              @click="weeklySortBy = 'chronological'"
+              title="Urutkan detail transaksi berdasarkan waktu"
+            >
+              🕒 Waktu
+            </button>
+            <button 
+              class="sort-btn" 
+              :class="{ active: weeklySortBy === 'amount' }" 
+              @click="weeklySortBy = 'amount'"
+              title="Urutkan detail transaksi dari pengeluaran terbesar"
+            >
+              💰 Terbesar
+            </button>
+          </div>
+        </div>
         
         <div v-if="weeklyData.length === 0" class="empty-state">
           Tidak ada data pengeluaran bulan ini.
@@ -321,6 +342,7 @@ export default {
 
     // Weekly spending calculation
     const expandedWeeks = ref({})
+    const weeklySortBy = ref('chronological')
 
     const toggleWeek = (label) => {
       expandedWeeks.value[label] = !expandedWeeks.value[label]
@@ -352,9 +374,13 @@ export default {
         }
       }
 
-      // Sort transactions within each week by date descending
+      // Sort transactions within each week
       for (const w of weeks) {
-        w.transactions.sort((a, b) => new Date(b.date) - new Date(a.date))
+        if (weeklySortBy.value === 'amount') {
+          w.transactions.sort((a, b) => (parseFloat(b.amount) || 0) - (parseFloat(a.amount) || 0))
+        } else {
+          w.transactions.sort((a, b) => new Date(b.date) - new Date(a.date))
+        }
       }
 
       // Find max for bar scaling
@@ -579,6 +605,7 @@ export default {
       chartSegments,
       weeklyData,
       weeklyAverage,
+      weeklySortBy,
       expandedWeeks,
       toggleWeek,
       insightEmoji,
@@ -987,6 +1014,63 @@ export default {
 }
 
 /* Weekly Breakdown */
+.weekly-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.weekly-header .section-title {
+  margin-bottom: 0;
+}
+
+.weekly-sort-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 4px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.sort-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-left: 8px;
+  margin-right: 4px;
+  font-weight: 500;
+}
+
+.weekly-sort-controls .sort-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.weekly-sort-controls .sort-btn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.weekly-sort-controls .sort-btn.active {
+  background: linear-gradient(135deg, #8b5cf6 0%, #d946ef 100%);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
+}
+
 .weekly-breakdown {
   display: flex;
   flex-direction: column;
