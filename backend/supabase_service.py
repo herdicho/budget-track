@@ -294,9 +294,12 @@ def get_budget(month: str):
     res = execute_with_retry(lambda c: c.table("budgets").select("*").eq("month", month).execute())
     return res.data[0] if res.data else None
 
+_budget_pure_fallback_store = {}
+
 def set_budget(month: str, amount: float, income: Optional[float] = None, budget_pure: float = 0.0):
     existing = get_budget(month)
     target_income = income if (income is not None) else (float(existing.get("income", 0.0)) if existing and existing.get("income") is not None else 0.0)
+    _budget_pure_fallback_store[month] = budget_pure
 
     if not _has_supabase_config:
         mock_budgets[month] = {"month": month, "amount": amount, "income": target_income, "budget_pure": budget_pure}
@@ -508,7 +511,15 @@ def get_dashboard_summary(month: str):
     # Get budget
     budget_data = get_budget(month)
     budget_amount = float(budget_data["amount"]) if (budget_data and "amount" in budget_data and budget_data["amount"] is not None) else 0.0
-    budget_pure_amount = float(budget_data["budget_pure"]) if (budget_data and "budget_pure" in budget_data and budget_data["budget_pure"] is not None) else 0.0
+    
+    db_pure = budget_data.get("budget_pure") if budget_data else None
+    if db_pure is not None and float(db_pure) > 0:
+        budget_pure_amount = float(db_pure)
+    elif month in _budget_pure_fallback_store and float(_budget_pure_fallback_store[month]) > 0:
+        budget_pure_amount = float(_budget_pure_fallback_store[month])
+    else:
+        budget_pure_amount = budget_amount
+        
     income_amount = float(budget_data["income"]) if (budget_data and "income" in budget_data and budget_data["income"] is not None) else 0.0
     
     # Get all transactions for the month
