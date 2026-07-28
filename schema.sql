@@ -36,12 +36,16 @@ CREATE TABLE IF NOT EXISTS public.budgets (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     month TEXT UNIQUE NOT NULL, -- Format YYYY-MM (e.g. "2026-06")
     amount NUMERIC(12, 2) NOT NULL,
+    budget_pure NUMERIC(12, 2) DEFAULT 0.00, -- Batas anggaran khusus 5 kategori pure
     income NUMERIC(12, 2) NOT NULL DEFAULT 0.00 -- Pendapatan bulanan
 );
 
--- Insert a default budget and income for the current month (5,000,000 IDR budget, 0.00 income)
-INSERT INTO public.budgets (month, amount, income)
-VALUES (to_char(CURRENT_DATE, 'YYYY-MM'), 5000000.00, 0.00)
+-- Alter table to ensure budget_pure column exists on existing deployments
+ALTER TABLE public.budgets ADD COLUMN IF NOT EXISTS budget_pure NUMERIC(12, 2) DEFAULT 0.00;
+
+-- Insert a default budget and income for the current month
+INSERT INTO public.budgets (month, amount, budget_pure, income)
+VALUES (to_char(CURRENT_DATE, 'YYYY-MM'), 5000000.00, 4000000.00, 0.00)
 ON CONFLICT (month) DO NOTHING;
 
 -- Seed default payment sources

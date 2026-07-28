@@ -294,18 +294,32 @@ def get_budget(month: str):
     res = execute_with_retry(lambda c: c.table("budgets").select("*").eq("month", month).execute())
     return res.data[0] if res.data else None
 
-def set_budget(month: str, amount: float, income: float = 0.0):
+def set_budget(month: str, amount: float, income: float = 0.0, budget_pure: float = 0.0):
     if not _has_supabase_config:
-        mock_budgets[month] = {"month": month, "amount": amount, "income": income}
-        print(f"Mock Mode: Budget for {month} set to {amount}, income to {income}")
+        mock_budgets[month] = {"month": month, "amount": amount, "income": income, "budget_pure": budget_pure}
+        print(f"Mock Mode: Budget for {month} set to amount={amount}, budget_pure={budget_pure}, income={income}")
         return mock_budgets[month]
 
     existing = get_budget(month)
-    if existing:
-        res = execute_with_retry(lambda c: c.table("budgets").update({"amount": amount, "income": income}).eq("month", month).execute())
-    else:
-        res = execute_with_retry(lambda c: c.table("budgets").insert({"month": month, "amount": amount, "income": income}).execute())
-    return res.data[0] if res.data else None
+    budget_data = {"amount": amount, "income": income, "budget_pure": budget_pure}
+    try:
+        if existing:
+            res = execute_with_retry(lambda c: c.table("budgets").update(budget_data).eq("month", month).execute())
+        else:
+            budget_data["month"] = month
+            res = execute_with_retry(lambda c: c.table("budgets").insert(budget_data).execute())
+        return res.data[0] if res.data else None
+    except Exception as e:
+        print(f"Notice: insert/update with budget_pure column encountered error: {e}. Retrying without budget_pure.")
+        fallback_data = {"amount": amount, "income": income}
+        if existing:
+            res = execute_with_retry(lambda c: c.table("budgets").update(fallback_data).eq("month", month).execute())
+        else:
+            fallback_data["month"] = month
+            res = execute_with_retry(lambda c: c.table("budgets").insert(fallback_data).execute())
+        ret = res.data[0] if (res and res.data) else {"month": month, "amount": amount, "income": income}
+        ret["budget_pure"] = budget_pure
+        return ret
 
 def sort_sources(sources_list):
     type_order = {'cash': 0, 'bank': 1, 'ewallet': 2}
@@ -491,7 +505,8 @@ def get_dashboard_summary(month: str):
     """
     # Get budget
     budget_data = get_budget(month)
-    budget_amount = float(budget_data["amount"]) if budget_data else 0.0
+    budget_amount = float(budget_data["amount"]) if budget_data and "amount" in budget_data else 0.0
+    budget_pure_amount = float(budget_data["budget_pure"]) if (budget_data and "budget_pure" in budget_data and budget_data["budget_pure"] is not None) else budget_amount
     income_amount = float(budget_data["income"]) if budget_data and "income" in budget_data else 0.0
     
     # Get all transactions for the month
@@ -529,6 +544,7 @@ def get_dashboard_summary(month: str):
     return {
         "month": month,
         "budget": budget_amount,
+        "budget_pure": budget_pure_amount,
         "income": display_income,
         "total_spent": total_spent,
         "remaining": budget_amount - total_spent,

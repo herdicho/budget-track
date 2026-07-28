@@ -83,9 +83,9 @@
         <div class="metric-card glass-panel compliance">
           <div class="metric-icon">📊</div>
           <div class="metric-info">
-            <span class="metric-label">Batas Anggaran Belanja</span>
+            <span class="metric-label">Batas Anggaran ({{ reportMode === 'pure' ? 'Pure' : 'Semua' }})</span>
             <div class="compliance-header">
-              <span class="metric-val small-val">{{ formatCurrency(spentForBudget) }} / {{ formatCurrency(summary.budget) }}</span>
+              <span class="metric-val small-val">{{ formatCurrency(spentForBudget) }} / {{ formatCurrency(activeBudgetLimit) }}</span>
               <span class="status-tag" :class="budgetStatusClass">{{ budgetStatusLabel }}</span>
             </div>
             <div class="compliance-progress">
@@ -543,29 +543,48 @@ export default {
       }
     })
 
-    // Calculations - spent for budget (Pure Bulanan categories only)
+    const activeBudgetLimit = computed(() => {
+      if (reportMode.value === 'pure') {
+        return (summary.value.budget_pure && summary.value.budget_pure > 0)
+          ? summary.value.budget_pure
+          : (summary.value.budget || 0)
+      } else {
+        return summary.value.budget || 0
+      }
+    })
+
+    // Calculations - spent for budget
     const spentForBudget = computed(() => {
       const cats = summary.value.categories || {}
-      return Object.entries(cats)
-        .filter(([name]) => isPureCategory(name))
-        .reduce((sum, [, amt]) => sum + (amt || 0), 0)
+      if (reportMode.value === 'pure') {
+        return Object.entries(cats)
+          .filter(([name]) => isPureCategory(name))
+          .reduce((sum, [, amt]) => sum + (amt || 0), 0)
+      } else {
+        const total = summary.value.total_spent || 0
+        const keluargaKey = Object.keys(cats).find(k => k.toLowerCase() === 'keluarga')
+        const keluargaSpent = keluargaKey ? (cats[keluargaKey] || 0) : 0
+        return Math.max(0, total - keluargaSpent)
+      }
     })
 
     const budgetSpentPercent = computed(() => {
-      const limit = summary.value.budget || 0
+      const limit = activeBudgetLimit.value
       if (limit <= 0) return 0
       return Math.min(Math.round((spentForBudget.value / limit) * 100), 100)
     })
 
     const budgetStatusClass = computed(() => {
-      const percent = (spentForBudget.value / (summary.value.budget || 1)) * 100
+      const limit = activeBudgetLimit.value || 1
+      const percent = (spentForBudget.value / limit) * 100
       if (percent > 100) return 'danger'
       if (percent > 85) return 'warning'
       return 'success'
     })
 
     const budgetStatusLabel = computed(() => {
-      const percent = (spentForBudget.value / (summary.value.budget || 1)) * 100
+      const limit = activeBudgetLimit.value || 1
+      const percent = (spentForBudget.value / limit) * 100
       if (percent > 100) return 'Over Budget 🚨'
       if (percent > 85) return 'Waspada ⚠️'
       return 'Hemat 👍'
@@ -675,6 +694,7 @@ export default {
       summary,
       activeModeSpent,
       spentForBudget,
+      activeBudgetLimit,
       changeMonth,
       formatMonthLabel,
       formatCurrency,

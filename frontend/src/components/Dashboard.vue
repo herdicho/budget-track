@@ -86,8 +86,8 @@
 
       <div class="budget-grid">
         <div class="budget-grid-item">
-          <span class="grid-item-label">Batas Anggaran</span>
-          <span class="grid-item-val font-primary">{{ formatCurrency(summary.budget) }}</span>
+          <span class="grid-item-label">Batas Anggaran ({{ dashboardBudgetMode === 'pure' ? 'Pure' : 'Semua' }})</span>
+          <span class="grid-item-val font-primary">{{ formatCurrency(activeBudgetLimit) }}</span>
         </div>
         <div class="budget-grid-item">
           <span class="grid-item-label">Total Pendapatan</span>
@@ -377,7 +377,6 @@
         </div>
       </div>
     </section>
-    </template>
 
     <!-- Inline Budget Edit Modal -->
     <div v-if="editingBudget" class="modal-overlay" @click.self="editingBudget = false">
@@ -386,19 +385,47 @@
         <p class="modal-desc">Tentukan batas anggaran belanja untuk bulan {{ formatMonthLabel(currentMonth) }}</p>
         
         <form @submit.prevent="saveBudget" class="budget-form">
-          <div class="form-group" style="margin-bottom: 20px;">
-            <label class="form-label" style="text-align: left; display: block; margin-bottom: 6px;">Batas Anggaran Belanja (Rp)</label>
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label class="form-label" style="text-align: left; display: block; margin-bottom: 6px;">🛍️ Batas Anggaran Pure Bulanan (Rp)</label>
             <input 
               type="number" 
-              v-model="newBudgetAmount" 
-              class="form-input text-center budget-input" 
-              placeholder="Batas Anggaran (Rp)"
+              v-model="newBudgetPureAmount" 
+              class="form-input budget-input" 
+              placeholder="Batas Pure Bulanan (Rp)"
               required
               min="0"
               ref="budgetInputRef"
             />
+            <span style="font-size: 11px; color: var(--text-muted); display: block; margin-top: 4px; text-align: left;">
+              Batas belanja khusus 5 kategori utama (Makanan, Transportasi, Bayi, Bulanan, Sosial).
+            </span>
           </div>
 
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label class="form-label" style="text-align: left; display: block; margin-bottom: 6px;">🌐 Batas Anggaran Keseluruhan (Rp)</label>
+            <input 
+              type="number" 
+              v-model="newBudgetAmount" 
+              class="form-input budget-input" 
+              placeholder="Batas Keseluruhan (Rp)"
+              required
+              min="0"
+            />
+            <span style="font-size: 11px; color: var(--text-muted); display: block; margin-top: 4px; text-align: left;">
+              Batas belanja total termasuk Hiburan, Liburan, Perlengkapan/Aset, dll.
+            </span>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 20px;">
+            <label class="form-label" style="text-align: left; display: block; margin-bottom: 6px;">💵 Estimasi Pendapatan Bulan Ini (Rp)</label>
+            <input 
+              type="number" 
+              v-model="newIncomeAmount" 
+              class="form-input budget-input" 
+              placeholder="Total Gaji / Income"
+              min="0"
+            />
+          </div>
 
           <div class="modal-actions" style="margin-top: 20px;">
             <button type="button" @click="editingBudget = false" class="btn btn-secondary">Batal</button>
@@ -407,6 +434,7 @@
         </form>
       </div>
     </div>
+    </template>
   </div>
 </template>
 
@@ -456,6 +484,7 @@ export default {
     
     const editingBudget = ref(false)
     const newBudgetAmount = ref(0)
+    const newBudgetPureAmount = ref(0)
     const newIncomeAmount = ref(0)
     const savingBudget = ref(false)
     const budgetInputRef = ref(null)
@@ -479,6 +508,17 @@ export default {
       return pureCategories.some(p => p.replace(/\s*&\s*/g, ' ').replace(/\s+dan\s+/g, ' ') === norm)
     }
 
+    // Active budget limit depends on mode (Pure Bulanan limit vs Keseluruhan limit)
+    const activeBudgetLimit = computed(() => {
+      if (dashboardBudgetMode.value === 'pure') {
+        return (summary.value.budget_pure && summary.value.budget_pure > 0)
+          ? summary.value.budget_pure
+          : (summary.value.budget || 0)
+      } else {
+        return summary.value.budget || 0
+      }
+    })
+
     // Percentage Computations
     const spentForBudget = computed(() => {
       const cats = summary.value.categories || {}
@@ -495,18 +535,19 @@ export default {
     })
 
     const remainingForBudget = computed(() => {
-      const budget = summary.value.budget || 0
-      return Math.max(0, budget - spentForBudget.value)
+      return Math.max(0, activeBudgetLimit.value - spentForBudget.value)
     })
 
     const spentPercent = computed(() => {
-      if (summary.value.budget <= 0) return 0
-      return (spentForBudget.value / summary.value.budget) * 100
+      const limit = activeBudgetLimit.value
+      if (!limit || limit <= 0) return 0
+      return (spentForBudget.value / limit) * 100
     })
 
     const remainingPercent = computed(() => {
-      if (summary.value.budget <= 0) return 100
-      return Math.max(0, (remainingForBudget.value / summary.value.budget) * 100)
+      const limit = activeBudgetLimit.value
+      if (!limit || limit <= 0) return 100
+      return Math.max(0, (remainingForBudget.value / limit) * 100)
     })
 
     const hasCategories = computed(() => {
@@ -678,7 +719,10 @@ export default {
 
     // Budget Editor
     const openBudgetEdit = () => {
-      newBudgetAmount.value = summary.value.budget
+      newBudgetAmount.value = summary.value.budget || 0
+      newBudgetPureAmount.value = (summary.value.budget_pure && summary.value.budget_pure > 0)
+        ? summary.value.budget_pure
+        : (summary.value.budget || 0)
       newIncomeAmount.value = summary.value.income || 0
       editingBudget.value = true
       nextTick(() => {
@@ -698,6 +742,7 @@ export default {
           body: JSON.stringify({
             month: currentMonth.value,
             amount: parseFloat(newBudgetAmount.value),
+            budget_pure: parseFloat(newBudgetPureAmount.value),
             income: parseFloat(newIncomeAmount.value)
           })
         })
@@ -825,6 +870,7 @@ export default {
       currentMonth,
       dashboardBudgetMode,
       summary,
+      activeBudgetLimit,
       spentPercent,
       remainingPercent,
       spentForBudget,
@@ -833,6 +879,7 @@ export default {
       hasSources,
       editingBudget,
       newBudgetAmount,
+      newBudgetPureAmount,
       newIncomeAmount,
       savingBudget,
       budgetInputRef,

@@ -44,7 +44,8 @@ class LoginRequest(BaseModel):
 
 class BudgetRequest(BaseModel):
     month: str # YYYY-MM
-    amount: float
+    amount: float # Batas Anggaran Keseluruhan
+    budget_pure: Optional[float] = 0.0 # Batas Anggaran Pure Bulanan
     income: Optional[float] = 0.0
 
 class TransactionRequest(BaseModel):
@@ -145,7 +146,7 @@ def read_budget(month: str):
 @app.post("/api/budget", dependencies=[Depends(verify_app_password)])
 def update_budget(req: BudgetRequest):
     try:
-        b = supabase_service.set_budget(req.month, req.amount, req.income)
+        b = supabase_service.set_budget(req.month, req.amount, req.income, req.budget_pure or 0.0)
         return {"status": "success", "data": b}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
