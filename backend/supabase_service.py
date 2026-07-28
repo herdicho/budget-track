@@ -301,28 +301,33 @@ def set_budget(month: str, amount: float, income: Optional[float] = None, budget
     target_income = income if (income is not None) else (float(existing.get("income", 0.0)) if existing and existing.get("income") is not None else 0.0)
     _budget_pure_fallback_store[month] = budget_pure
 
+    budget_data = {"month": month, "amount": amount, "income": target_income, "budget_pure": budget_pure}
+    mock_budgets[month] = budget_data
+
     if not _has_supabase_config:
-        mock_budgets[month] = {"month": month, "amount": amount, "income": target_income, "budget_pure": budget_pure}
         print(f"Mock Mode: Budget for {month} set to amount={amount}, budget_pure={budget_pure}, income={target_income}")
         return mock_budgets[month]
 
-    budget_data = {"month": month, "amount": amount, "income": target_income, "budget_pure": budget_pure}
-    mock_budgets[month] = budget_data
     try:
-        res = execute_with_retry(lambda c: c.table("budgets").upsert(budget_data, on_conflict="month").execute())
+        if existing:
+            res = execute_with_retry(lambda c: c.table("budgets").update({"amount": amount, "income": target_income, "budget_pure": budget_pure}).eq("month", month).execute())
+        else:
+            res = execute_with_retry(lambda c: c.table("budgets").insert(budget_data).execute())
         print(f"Set Budget Supabase Result for {month}: {res.data if res else None}")
         return res.data[0] if (res and res.data) else budget_data
     except Exception as e:
-        print(f"Notice: upsert with budget_pure column encountered error: {e}. Retrying without budget_pure.")
+        print(f"Notice: update/insert with budget_pure column encountered error: {e}. Retrying without budget_pure column.")
         fallback_data = {"month": month, "amount": amount, "income": target_income}
         try:
-            res = execute_with_retry(lambda c: c.table("budgets").upsert(fallback_data, on_conflict="month").execute())
+            if existing:
+                res = execute_with_retry(lambda c: c.table("budgets").update({"amount": amount, "income": target_income}).eq("month", month).execute())
+            else:
+                res = execute_with_retry(lambda c: c.table("budgets").insert(fallback_data).execute())
             ret = res.data[0] if (res and res.data) else fallback_data
             ret["budget_pure"] = budget_pure
             return ret
         except Exception as err2:
             print(f"Fallback set_budget also failed: {err2}")
-            budget_data["budget_pure"] = budget_pure
             return budget_data
 
 def sort_sources(sources_list):
