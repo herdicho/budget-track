@@ -843,16 +843,36 @@ export default {
   box-sizing: border-box;
 }
 
+.metric-card.inflow {
+  background: linear-gradient(135deg, rgba(209, 250, 229, 0.85) 0%, rgba(167, 243, 208, 0.6) 100%);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.metric-card.outflow {
+  background: linear-gradient(135deg, rgba(254, 226, 226, 0.85) 0%, rgba(254, 202, 202, 0.6) 100%);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.metric-card.savings {
+  background: linear-gradient(135deg, rgba(224, 242, 254, 0.85) 0%, rgba(186, 230, 253, 0.6) 100%);
+  border-color: rgba(14, 165, 233, 0.3);
+}
+
+.metric-card.compliance {
+  background: linear-gradient(135deg, rgba(254, 243, 199, 0.85) 0%, rgba(253, 230, 138, 0.6) 100%);
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
 .metric-icon {
   font-size: 24px;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.7);
   width: 46px;
   height: 46px;
   border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--glass-border);
+  border: 1px solid rgba(255, 255, 255, 0.9);
 }
 
 .metric-info {
@@ -882,19 +902,19 @@ export default {
 }
 
 .text-green {
-  color: #50fa7b;
+  color: #059669;
 }
 
 .text-pink {
-  color: #ff79c6;
+  color: #e11d48;
 }
 
 .text-teal {
-  color: #8be9fd;
+  color: #0284c7;
 }
 
 .danger-text {
-  color: #ff5555;
+  color: #dc2626;
 }
 
 .compliance-header {

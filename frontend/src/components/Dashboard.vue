@@ -1076,20 +1076,6 @@ export default {
   color: var(--color-success-light);
 }
 
-.manual-promo-card {
-  background: linear-gradient(135deg, rgba(14, 165, 233, 0.08) 0%, rgba(6, 182, 212, 0.03) 100%) !important;
-  border-color: rgba(14, 165, 233, 0.2) !important;
-}
-
-.manual-promo-card:hover {
-  background: linear-gradient(135deg, rgba(14, 165, 233, 0.12) 0%, rgba(6, 182, 212, 0.06) 100%) !important;
-  border-color: rgba(14, 165, 233, 0.35) !important;
-}
-
-.manual-icon-box {
-  background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%) !important;
-}
-
 /* Scan Nota Promo Card */
 .upload-promo-card {
   padding: 16px 20px;
@@ -1097,18 +1083,34 @@ export default {
   justify-content: space-between;
   align-items: center;
   cursor: pointer;
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.08) 0%, rgba(217, 70, 239, 0.03) 100%);
-  border-color: rgba(139, 92, 246, 0.2);
+  background: linear-gradient(135deg, rgba(254, 243, 199, 0.85) 0%, rgba(253, 230, 138, 0.6) 100%) !important;
+  border-color: rgba(245, 158, 11, 0.35) !important;
+  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.12) !important;
 }
 
 .upload-promo-card:hover {
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.12) 0%, rgba(217, 70, 239, 0.06) 100%);
-  border-color: rgba(139, 92, 246, 0.35);
+  background: linear-gradient(135deg, rgba(254, 243, 199, 0.95) 0%, rgba(253, 230, 138, 0.8) 100%) !important;
+  border-color: rgba(245, 158, 11, 0.5) !important;
   transform: translateY(-2px);
 }
 
 .upload-promo-card:active {
   transform: translateY(0);
+}
+
+.manual-promo-card {
+  background: linear-gradient(135deg, rgba(224, 242, 254, 0.85) 0%, rgba(186, 230, 253, 0.6) 100%) !important;
+  border-color: rgba(2, 132, 199, 0.3) !important;
+  box-shadow: 0 4px 15px rgba(2, 132, 199, 0.12) !important;
+}
+
+.manual-promo-card:hover {
+  background: linear-gradient(135deg, rgba(224, 242, 254, 0.95) 0%, rgba(186, 230, 253, 0.8) 100%) !important;
+  border-color: rgba(2, 132, 199, 0.45) !important;
+}
+
+.manual-icon-box {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
 }
 
 .promo-content {
