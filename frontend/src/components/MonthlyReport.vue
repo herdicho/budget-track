@@ -13,6 +13,29 @@
         <span class="month-title">{{ formatMonthLabel(selectedMonth) }}</span>
         <button @click="changeMonth(1)" class="nav-btn">&rsaquo;</button>
       </div>
+
+      <!-- Mode Switcher Tabs -->
+      <div class="report-mode-switcher">
+        <button 
+          class="mode-tab" 
+          :class="{ active: reportMode === 'pure' }" 
+          @click="reportMode = 'pure'"
+        >
+          <span class="mode-icon">🛍️</span> Pure Bulanan
+        </button>
+        <button 
+          class="mode-tab" 
+          :class="{ active: reportMode === 'all' }" 
+          @click="reportMode = 'all'"
+        >
+          <span class="mode-icon">🌐</span> Semua Kategori
+        </button>
+      </div>
+
+      <!-- Pure Categories Helper Badge -->
+      <div v-if="reportMode === 'pure'" class="pure-cat-badge">
+        <span class="badge-icon">💡</span> Kategori: Makanan, Transportasi, Sosial & Ibadah, Kebutuhan Bulanan, Kebutuhan Bayi
+      </div>
     </header>
 
     <!-- Main Content Loader -->
@@ -40,8 +63,8 @@
         <div class="metric-card glass-panel outflow">
           <div class="metric-icon">🛒</div>
           <div class="metric-info">
-            <span class="metric-label">Total Belanja</span>
-            <h3 class="metric-val text-pink">{{ formatCurrency(summary.total_spent) }}</h3>
+            <span class="metric-label">Total Belanja ({{ reportMode === 'pure' ? 'Pure' : 'Semua' }})</span>
+            <h3 class="metric-val text-pink">{{ formatCurrency(activeModeSpent) }}</h3>
           </div>
         </div>
 
@@ -74,10 +97,10 @@
 
       <!-- 2. Main Donut Chart (Full Width Layout) -->
       <section class="chart-card glass-panel full-width-chart">
-        <h3 class="section-title">Proporsi Pengeluaran Kategori</h3>
+        <h3 class="section-title">Proporsi Pengeluaran {{ reportMode === 'pure' ? 'Pure Bulanan' : 'Semua Kategori' }}</h3>
         
         <div v-if="chartSegments.length === 0" class="empty-state">
-          Tidak ada data pengeluaran bulan ini.
+          Tidak ada data pengeluaran {{ reportMode === 'pure' ? 'pure bulanan' : 'kategori' }} bulan ini.
         </div>
 
         <div v-else class="chart-donut-container">
@@ -109,8 +132,8 @@
                 class="donut-segment"
               />
               <!-- Center Label -->
-              <text x="70" y="65" text-anchor="middle" class="donut-center-title">TOTAL BELANJA</text>
-              <text x="70" y="85" text-anchor="middle" class="donut-center-value">{{ formatCurrencyShort(spentForBudget) }}</text>
+              <text x="70" y="65" text-anchor="middle" class="donut-center-title">{{ reportMode === 'pure' ? 'PURE BELANJA' : 'TOTAL BELANJA' }}</text>
+              <text x="70" y="85" text-anchor="middle" class="donut-center-value">{{ formatCurrencyShort(activeModeSpent) }}</text>
             </svg>
           </div>
 
@@ -130,7 +153,7 @@
       <!-- 3. Weekly Spending Breakdown -->
       <section class="chart-card glass-panel full-width-chart">
         <div class="weekly-header">
-          <h3 class="section-title">📅 Pengeluaran per Minggu</h3>
+          <h3 class="section-title">📅 Pengeluaran per Minggu ({{ reportMode === 'pure' ? 'Pure Bulanan' : 'Semua Kategori' }})</h3>
           <div class="weekly-sort-controls">
             <span class="sort-label">Urutkan detail:</span>
             <button 
@@ -282,6 +305,7 @@ export default {
   setup(props) {
     const selectedMonth = ref(new Date().toISOString().substring(0, 7))
     const loading = ref(false)
+    const reportMode = ref('pure') // 'pure' | 'all'
     const summary = ref({
       month: selectedMonth.value,
       budget: 0.0,
@@ -293,6 +317,22 @@ export default {
       sources: {},
       users: {}
     })
+
+    // Pure bulanan 5 core categories
+    const pureCategories = [
+      'makanan',
+      'transportasi',
+      'sosial & ibadah',
+      'sosial ibadah',
+      'kebutuhan bulanan',
+      'kebutuhan bayi'
+    ]
+
+    const isPureCategory = (catName) => {
+      if (!catName) return false
+      const norm = catName.trim().toLowerCase()
+      return pureCategories.includes(norm)
+    }
 
     const fetchReportData = async () => {
       loading.value = true
@@ -350,8 +390,15 @@ export default {
 
     const weeklyData = computed(() => {
       const txs = monthTransactions.value || []
-      // Filter out transfers, income, saldo awal, AND keluarga
-      const expenses = txs.filter(t => !['Transfer', 'Pendapatan', 'Saldo Awal', 'Keluarga'].includes(t.category))
+      // Filter expenses according to reportMode
+      const expenses = txs.filter(t => {
+        if (!t.category) return false
+        if (['Transfer', 'Pendapatan', 'Saldo Awal'].includes(t.category)) return false
+        if (reportMode.value === 'pure') {
+          return isPureCategory(t.category)
+        }
+        return true
+      })
       
       if (expenses.length === 0) return []
 
@@ -449,6 +496,8 @@ export default {
         'Transportasi': '#8be9fd',
         'Kebutuhan Bulanan': '#50fa7b',
         'Kebutuhan Bayi': '#ffb86c',
+        'Sosial & Ibadah': '#a78bfa',
+        'Sosial Ibadah': '#a78bfa',
         'Hiburan': '#bd93f9',
         'Transfer': '#0ea5e9',
         'Pendapatan': '#50fa7b',
@@ -466,6 +515,8 @@ export default {
         'Transportasi': '🚗',
         'Kebutuhan Bulanan': '🛒',
         'Kebutuhan Bayi': '👶',
+        'Sosial & Ibadah': '🤲',
+        'Sosial Ibadah': '🤲',
         'Hiburan': '🎬',
         'Transfer': '🔄',
         'Pendapatan': '💰',
@@ -474,13 +525,29 @@ export default {
       return emojis[catName] || '💰'
     }
 
-    // Calculations - exclude Keluarga from budget
-    const spentForBudget = computed(() => {
-      const total = summary.value.total_spent || 0
+    // Active mode spent calculation
+    const activeModeSpent = computed(() => {
       const cats = summary.value.categories || {}
-      const keluargaKey = Object.keys(cats).find(k => k.toLowerCase() === 'keluarga')
-      const keluargaSpent = keluargaKey ? (cats[keluargaKey] || 0) : 0
-      return Math.max(0, total - keluargaSpent)
+      if (reportMode.value === 'pure') {
+        return Object.entries(cats)
+          .filter(([name]) => isPureCategory(name))
+          .reduce((sum, [, amt]) => sum + amt, 0)
+      } else {
+        return summary.value.total_spent || 0
+      }
+    })
+
+    // Calculations - spent for budget
+    const spentForBudget = computed(() => {
+      if (reportMode.value === 'pure') {
+        return activeModeSpent.value
+      } else {
+        const total = summary.value.total_spent || 0
+        const cats = summary.value.categories || {}
+        const keluargaKey = Object.keys(cats).find(k => k.toLowerCase() === 'keluarga')
+        const keluargaSpent = keluargaKey ? (cats[keluargaKey] || 0) : 0
+        return Math.max(0, total - keluargaSpent)
+      }
     })
 
     const budgetSpentPercent = computed(() => {
@@ -513,8 +580,15 @@ export default {
     // SVG Donut segments calculations
     const chartSegments = computed(() => {
       const cats = summary.value.categories || {}
-      // Exclude Keluarga from chart
-      const filteredCats = Object.entries(cats).filter(([name]) => name.toLowerCase() !== 'keluarga')
+      
+      const filteredCats = Object.entries(cats).filter(([name]) => {
+        if (['transfer', 'pendapatan', 'saldo awal'].includes(name.toLowerCase())) return false
+        if (reportMode.value === 'pure') {
+          return isPureCategory(name)
+        }
+        return true
+      })
+
       const total = filteredCats.reduce((a, [, b]) => a + b, 0)
       if (total <= 0) return []
 
@@ -540,7 +614,7 @@ export default {
 
     // Financial Insights generator
     const insightEmoji = computed(() => {
-      const spent = summary.value.total_spent || 0
+      const spent = activeModeSpent.value
       const budget = summary.value.budget || 0
       const income = summary.value.income || 0
 
@@ -551,7 +625,7 @@ export default {
     })
 
     const insightTitle = computed(() => {
-      const spent = summary.value.total_spent || 0
+      const spent = activeModeSpent.value
       const budget = summary.value.budget || 0
       const income = summary.value.income || 0
 
@@ -562,19 +636,26 @@ export default {
     })
 
     const insightDescription = computed(() => {
-      const spent = summary.value.total_spent || 0
+      const spent = activeModeSpent.value
       const budget = summary.value.budget || 0
       const income = summary.value.income || 0
       const cats = summary.value.categories || {}
 
-      if (Object.keys(cats).length === 0) {
-        return 'Belum ada data belanja tercatat. Mulai catat belanja Anda untuk melihat analisis saku.'
+      let targetCats = Object.entries(cats)
+      if (reportMode.value === 'pure') {
+        targetCats = targetCats.filter(([name]) => isPureCategory(name))
+      } else {
+        targetCats = targetCats.filter(([name]) => !['transfer', 'pendapatan', 'saldo awal'].includes(name.toLowerCase()))
+      }
+
+      if (targetCats.length === 0) {
+        return 'Belum ada data belanja tercatat untuk mode ini.'
       }
 
       // Find top expense category
-      const topCat = Object.entries(cats).reduce((max, curr) => curr[1] > max[1] ? curr : max, ['', 0])
+      const topCat = targetCats.reduce((max, curr) => curr[1] > max[1] ? curr : max, ['', 0])
 
-      let desc = `Pengeluaran terbesar keluarga berada pada kategori "${topCat[0]}" sebesar ${formatCurrency(topCat[1])}. `
+      let desc = `Pengeluaran terbesar (${reportMode.value === 'pure' ? 'Pure Bulanan' : 'Semua Kategori'}) berada pada kategori "${topCat[0]}" sebesar ${formatCurrency(topCat[1])}. `
 
       if (spent > budget && budget > 0) {
         desc += 'Pengeluaran bulanan Anda sudah melewati batas rencana anggaran belanja. Cobalah untuk menunda pembelian non-primer di sisa hari ini.'
@@ -589,7 +670,9 @@ export default {
     return {
       selectedMonth,
       loading,
+      reportMode,
       summary,
+      activeModeSpent,
       spentForBudget,
       changeMonth,
       formatMonthLabel,
@@ -660,6 +743,68 @@ export default {
   border: 1px solid var(--glass-border);
   border-radius: 16px;
   padding: 10px 16px;
+}
+
+/* Mode Switcher Tabs */
+.report-mode-switcher {
+  display: flex;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--glass-border);
+  padding: 4px;
+  border-radius: 14px;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.mode-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.mode-tab:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.mode-tab.active {
+  background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(236, 72, 153, 0.3);
+}
+
+.mode-icon {
+  font-size: 14px;
+}
+
+.pure-cat-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: #8be9fd;
+  background: rgba(139, 233, 253, 0.08);
+  border: 1px solid rgba(139, 233, 253, 0.2);
+  padding: 8px 12px;
+  border-radius: 10px;
+  line-height: 1.4;
+  margin-top: 2px;
+}
+
+.badge-icon {
+  font-size: 14px;
+  flex-shrink: 0;
 }
 
 .nav-btn {
