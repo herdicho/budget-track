@@ -388,12 +388,12 @@
           <div class="form-group" style="margin-bottom: 16px;">
             <label class="form-label" style="text-align: left; display: block; margin-bottom: 6px;">🛍️ Batas Anggaran Pure Bulanan (Rp)</label>
             <input 
-              type="number" 
+              type="text"
+              inputmode="numeric"
               v-model="newBudgetPureAmount" 
               class="form-input budget-input" 
-              placeholder="Batas Pure Bulanan (Rp)"
+              placeholder="Misal: 4.000.000"
               required
-              min="0"
               ref="budgetInputRef"
             />
             <span style="font-size: 11px; color: var(--text-muted); display: block; margin-top: 4px; text-align: left;">
@@ -404,12 +404,12 @@
           <div class="form-group" style="margin-bottom: 16px;">
             <label class="form-label" style="text-align: left; display: block; margin-bottom: 6px;">🌐 Batas Anggaran Keseluruhan (Rp)</label>
             <input 
-              type="number" 
+              type="text"
+              inputmode="numeric"
               v-model="newBudgetAmount" 
               class="form-input budget-input" 
-              placeholder="Batas Keseluruhan (Rp)"
+              placeholder="Misal: 6.000.000"
               required
-              min="0"
             />
             <span style="font-size: 11px; color: var(--text-muted); display: block; margin-top: 4px; text-align: left;">
               Batas belanja total termasuk Hiburan, Liburan, Perlengkapan/Aset, dll.
@@ -704,10 +704,18 @@ export default {
       return '💳'
     }
 
+    const parseNumber = (val) => {
+      if (val === null || val === undefined || val === '') return 0
+      if (typeof val === 'number') return isNaN(val) ? 0 : val
+      const str = String(val).replace(/\./g, '').replace(/,/g, '.').replace(/[^\d.-]/g, '')
+      const parsed = parseFloat(str)
+      return isNaN(parsed) ? 0 : parsed
+    }
+
     // Budget Editor
     const openBudgetEdit = () => {
-      newBudgetAmount.value = summary.value.budget || 0
-      newBudgetPureAmount.value = summary.value.budget_pure || 0
+      newBudgetAmount.value = summary.value.budget ? String(summary.value.budget) : ''
+      newBudgetPureAmount.value = summary.value.budget_pure ? String(summary.value.budget_pure) : ''
       editingBudget.value = true
       nextTick(() => {
         if (budgetInputRef.value) budgetInputRef.value.focus()
@@ -717,6 +725,9 @@ export default {
     const saveBudget = async () => {
       savingBudget.value = true
       try {
+        const amountVal = parseNumber(newBudgetAmount.value)
+        const pureVal = parseNumber(newBudgetPureAmount.value)
+
         const response = await fetch(`${props.apiUrl}/api/budget`, {
           method: 'POST',
           headers: {
@@ -725,8 +736,8 @@ export default {
           },
           body: JSON.stringify({
             month: currentMonth.value,
-            amount: parseFloat(newBudgetAmount.value) || 0,
-            budget_pure: parseFloat(newBudgetPureAmount.value) || 0
+            amount: amountVal,
+            budget_pure: pureVal
           })
         })
         if (response.ok) {
