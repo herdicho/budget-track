@@ -234,14 +234,15 @@ export default {
       )
       if (matched) {
         localTx.payment_source = matched.name
-      } else {
-        localSources.value.unshift({
-          name: localTx.payment_source,
-          type: 'bank'
-        })
+      } else if (localSources.value.length > 0) {
+        const userMatched = localSources.value.find(s => 
+          s.name.toLowerCase().includes(localTx.user_name.toLowerCase()) ||
+          s.name.toLowerCase().includes(localTx.payment_source.toLowerCase())
+        )
+        localTx.payment_source = userMatched ? userMatched.name : localSources.value[0].name
       }
-    } else {
-      localTx.payment_source = localSources.value.length > 0 ? localSources.value[0].name : 'Cash'
+    } else if (localSources.value.length > 0) {
+      localTx.payment_source = localSources.value[0].name
     }
 
     const formatCurrency = (val) => {

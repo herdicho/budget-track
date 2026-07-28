@@ -166,11 +166,12 @@ export default {
     }
 
     const triggerManualTransaction = () => {
+      const defaultSource = paymentSources.value && paymentSources.value.length > 0 ? paymentSources.value[0].name : 'Cash'
       extractedData.value = {
         merchant: '',
         date: new Date().toLocaleDateString('sv-SE'),
         category: 'Lain-lain',
-        payment_source: 'Cash',
+        payment_source: defaultSource,
         amount: 0.0,
         user_name: 'Suami',
         items: [],

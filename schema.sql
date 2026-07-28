@@ -60,7 +60,10 @@ INSERT INTO public.categories (name, emoji, color) VALUES
 ('Transportasi', '🚗', '#8be9fd'),
 ('Kebutuhan Bulanan', '🛒', '#50fa7b'),
 ('Kebutuhan Bayi', '👶', '#ffb86c'),
+('Sosial & Ibadah', '🤲', '#a78bfa'),
 ('Hiburan', '🎬', '#bd93f9'),
+('Liburan & Perjalanan', '🧳', '#f1fa8c'),
+('Perlengkapan & Aset', '🧸', '#ffb86c'),
 ('Transfer', '🔄', '#0ea5e9'),
 ('Pendapatan', '💰', '#50fa7b'),
 ('Lain-lain', '📦', '#ff5555')

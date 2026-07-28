@@ -582,7 +582,11 @@ export default {
         'Transportasi': '#8be9fd',  // Cyan
         'Kebutuhan Bulanan': '#50fa7b', // Green
         'Kebutuhan Bayi': '#ffb86c', // Orange
+        'Sosial & Ibadah': '#a78bfa',
+        'Sosial Ibadah': '#a78bfa',
         'Hiburan': '#bd93f9',        // Purple
+        'Liburan & Perjalanan': '#f1fa8c', // Yellow
+        'Perlengkapan & Aset': '#ffb86c', // Orange
         'Transfer': '#0ea5e9',
         'Pendapatan': '#50fa7b',
         'Lain-lain': '#ff5555'       // Red
@@ -599,7 +603,11 @@ export default {
         'Transportasi': '🚗',
         'Kebutuhan Bulanan': '🛒',
         'Kebutuhan Bayi': '👶',
+        'Sosial & Ibadah': '🤲',
+        'Sosial Ibadah': '🤲',
         'Hiburan': '🎬',
+        'Liburan & Perjalanan': '🧳',
+        'Perlengkapan & Aset': '🧸',
         'Transfer': '🔄',
         'Pendapatan': '💰',
         'Lain-lain': '📦'

@@ -15,12 +15,12 @@ class ReceiptItem(BaseModel):
     name: str = Field(description="Nama barang yang dibeli")
     quantity: int = Field(description="Jumlah barang yang dibeli")
     price: float = Field(description="Harga total untuk item ini dalam Rupiah")
-    category: str = Field(description="Kategori spesifik untuk item ini. Harus bernilai salah satu dari: 'Makanan', 'Transportasi', 'Kebutuhan Bulanan', 'Kebutuhan Bayi', 'Hiburan', 'Lain-lain'")
+    category: str = Field(description="Kategori spesifik untuk item ini. Harus bernilai salah satu dari: 'Makanan', 'Transportasi', 'Kebutuhan Bulanan', 'Kebutuhan Bayi', 'Sosial & Ibadah', 'Hiburan', 'Liburan & Perjalanan', 'Perlengkapan & Aset', 'Lain-lain'")
 
 class ReceiptDetails(BaseModel):
     merchant: str = Field(description="Nama toko, restoran, merchant, atau tempat pembelian")
     date: str = Field(description="Tanggal pembelian dalam format YYYY-MM-DD. Jika tanggal tidak ditemukan, gunakan tanggal hari ini")
-    category: str = Field(description="Kategori pengeluaran. Harus bernilai salah satu dari: 'Makanan', 'Transportasi', 'Kebutuhan Bulanan', 'Kebutuhan Bayi', 'Hiburan', 'Lain-lain'")
+    category: str = Field(description="Kategori pengeluaran. Harus bernilai salah satu dari: 'Makanan', 'Transportasi', 'Kebutuhan Bulanan', 'Kebutuhan Bayi', 'Sosial & Ibadah', 'Hiburan', 'Liburan & Perjalanan', 'Perlengkapan & Aset', 'Lain-lain'")
     payment_source: str = Field(description="Sumber pembayaran jika terdeteksi di nota, contoh: 'BCA', 'Mandiri', 'Gopay', 'OVO', 'Cash'. Jika tidak terdeteksi, gunakan 'Cash'")
     amount: float = Field(description="Total nominal uang yang dibayarkan dalam Rupiah")
     items: List[ReceiptItem] = Field(description="Rincian barang/jasa yang dibeli")
@@ -49,11 +49,11 @@ def extract_receipt_details(image_bytes: bytes, mime_type: str = "image/jpeg") -
         prompt = (
             "Analisis gambar nota belanja ini dan ekstrak informasi transaksi secara terperinci. "
             "PENTING: Untuk setiap item/barang di nota, tentukan kategori SPESIFIK per-item di field 'category' pada masing-masing item. "
-            "Contoh: telur, beras, mie instan → 'Makanan'; sabun, shampo, detergen → 'Kebutuhan Bulanan'; popok, susu bayi → 'Kebutuhan Bayi'. "
+            "Contoh: telur, beras, mie instan → 'Makanan'; sabun, shampo, detergen → 'Kebutuhan Bulanan'; popok, susu bayi → 'Kebutuhan Bayi'; bak mandi, stroller, mainan → 'Perlengkapan & Aset'; tiket wisata, kereta liburan → 'Liburan & Perjalanan'. "
             "Field 'category' di level atas (bukan item) diisi dengan kategori yang paling dominan/banyak di nota. "
-            "Pilihan kategori: Makanan, Transportasi, Kebutuhan Bulanan, Kebutuhan Bayi, Hiburan, atau Lain-lain. "
+            "Pilihan kategori: Makanan, Transportasi, Kebutuhan Bulanan, Kebutuhan Bayi, Sosial & Ibadah, Hiburan, Liburan & Perjalanan, Perlengkapan & Aset, atau Lain-lain. "
             "Jika ada metode pembayaran yang tertulis di nota (seperti debit BCA, QRIS Gopay, cash, dll), "
-            "tebak payment_source-nya. Jika tidak ada, kembalikan 'Cash'."
+            "tebak payment_source-nya."
         )
         
         response = client.models.generate_content(
