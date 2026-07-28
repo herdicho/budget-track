@@ -3,31 +3,31 @@
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: dark;
+  color-scheme: light;
   
-  /* Modern Royal Blue & Cyber Yellow Dark Mode Color System */
-  --bg-gradient-start: #060b18;
-  --bg-gradient-end: #0a1329;
+  /* Modern Fresh Light Sky Blue & Sun Yellow Color System */
+  --bg-gradient-start: #e0f2fe; /* Soft Sky Blue */
+  --bg-gradient-end: #bae6fd;   /* Fresh Sky Blue */
   
-  --glass-bg: rgba(255, 255, 255, 0.035);
-  --glass-border: rgba(255, 255, 255, 0.08);
-  --glass-glow: rgba(59, 130, 246, 0.15);
+  --glass-bg: rgba(255, 255, 255, 0.75);
+  --glass-border: rgba(255, 255, 255, 0.85);
+  --glass-glow: rgba(14, 165, 233, 0.2);
   
-  --color-primary: #facc15;       /* Vivid Cyber Yellow */
-  --color-primary-light: #fef08a; /* Light Gold Yellow */
-  --color-secondary: #3b82f6;     /* Royal Electric Blue */
-  --color-secondary-dark: #1d4ed8;
+  --color-primary: #f59e0b;       /* Sun Yellow / Amber */
+  --color-primary-light: #fbbf24; /* Warm Light Yellow */
+  --color-secondary: #0284c7;     /* Sky Electric Blue */
+  --color-secondary-dark: #0369a1;
   
   --color-success: #10b981;
   --color-success-light: #34d399;
-  --color-danger: #f43f5e;
-  --color-danger-light: #fb7185;
+  --color-danger: #ef4444;
+  --color-danger-light: #f87171;
   --color-warning: #f59e0b;
   --color-warning-light: #fbbf24;
   
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
+  --text-primary: #0f172a;   /* Slate 900 (High contrast dark slate for light theme) */
+  --text-secondary: #334155; /* Slate 700 */
+  --text-muted: #64748b;     /* Slate 500 */
   
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -48,7 +48,7 @@ html {
 }
 
 body {
-  background: radial-gradient(circle at 50% 0%, #0e244d 0%, var(--bg-gradient-start) 65%), var(--bg-gradient-end);
+  background: radial-gradient(circle at 50% 0%, #e0f2fe 0%, #bae6fd 60%), #7dd3fc;
   background-attachment: fixed;
   color: var(--text-primary);
   min-height: 100vh;
@@ -74,20 +74,20 @@ body {
   position: relative;
 }
 
-/* Glassmorphic Panel Utility */
+/* Glassmorphic Panel Utility (Light Sky Glass) */
 .glass-panel {
   background: var(--glass-bg);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--glass-border);
   border-radius: 24px;
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  box-shadow: 0 8px 32px 0 rgba(14, 165, 233, 0.12), 0 2px 6px 0 rgba(255, 255, 255, 0.7) inset;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .glass-panel:hover {
-  border-color: rgba(255, 255, 255, 0.12);
-  box-shadow: 0 12px 40px 0 rgba(76, 201, 240, 0.08);
+  border-color: rgba(255, 255, 255, 1);
+  box-shadow: 0 12px 40px 0 rgba(14, 165, 233, 0.2);
 }
 
 /* Buttons */
@@ -108,31 +108,32 @@ body {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #2563eb 0%, #facc15 100%);
+  background: linear-gradient(135deg, #0284c7 0%, #f59e0b 100%);
   color: #ffffff;
-  box-shadow: 0 4px 18px rgba(37, 99, 235, 0.35);
+  box-shadow: 0 4px 18px rgba(2, 132, 199, 0.3);
 }
 
 .btn-primary:active {
   transform: scale(0.98);
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.2);
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.2);
 }
 
 .btn-secondary {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.8);
   color: var(--text-primary);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(14, 165, 233, 0.2);
+  box-shadow: 0 2px 6px rgba(14, 165, 233, 0.08);
 }
 
 .btn-secondary:active {
-  background: rgba(255, 255, 255, 0.12);
+  background: #ffffff;
   transform: scale(0.98);
 }
 
 .btn-danger {
   background: linear-gradient(135deg, var(--color-danger) 0%, var(--color-danger-light) 100%);
   color: white;
-  box-shadow: 0 4px 15px rgba(244, 63, 94, 0.3);
+  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
 }
 
 .btn-danger:active {
@@ -158,8 +159,8 @@ body {
   width: 100%;
   padding: 14px 16px;
   border-radius: 14px;
-  background: rgba(0, 0, 0, 0.25);
-  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(14, 165, 233, 0.25);
   color: var(--text-primary);
   font-family: inherit;
   font-size: 15px;
@@ -168,9 +169,9 @@ body {
 }
 
 .form-input:focus {
-  border-color: var(--color-primary-light);
-  box-shadow: 0 0 0 3px rgba(76, 201, 240, 0.25);
-  background: rgba(0, 0, 0, 0.4);
+  border-color: #0284c7;
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.25);
+  background: #ffffff;
 }
 
 /* Custom Scrollbar */

@@ -1530,8 +1530,8 @@ export default {
 /* Dashboard Budget Mode Switcher */
 .dash-budget-mode-switcher {
   display: flex;
-  background: rgba(0, 0, 0, 0.25);
-  border: 1px solid var(--glass-border);
+  background: rgba(2, 132, 199, 0.08);
+  border: 1px solid rgba(2, 132, 199, 0.18);
   padding: 3px;
   border-radius: 12px;
   gap: 4px;
@@ -1542,7 +1542,7 @@ export default {
   flex: 1;
   background: transparent;
   border: none;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   font-size: 12px;
   font-weight: 600;
   padding: 6px 12px;
@@ -1554,12 +1554,12 @@ export default {
 
 .dash-mode-btn:hover {
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.6);
 }
 
 .dash-mode-btn.active {
-  background: linear-gradient(135deg, #1d4ed8 0%, #eab308 100%);
+  background: linear-gradient(135deg, #0284c7 0%, #f59e0b 100%);
   color: #ffffff;
-  box-shadow: 0 3px 12px rgba(37, 99, 235, 0.4);
+  box-shadow: 0 3px 12px rgba(2, 132, 199, 0.3);
 }
 </style>

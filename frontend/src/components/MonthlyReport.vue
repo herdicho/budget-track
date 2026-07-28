@@ -749,8 +749,8 @@ export default {
 /* Mode Switcher Tabs */
 .report-mode-switcher {
   display: flex;
-  background: rgba(0, 0, 0, 0.25);
-  border: 1px solid var(--glass-border);
+  background: rgba(2, 132, 199, 0.08);
+  border: 1px solid rgba(2, 132, 199, 0.18);
   padding: 4px;
   border-radius: 14px;
   gap: 4px;
@@ -765,7 +765,7 @@ export default {
   gap: 6px;
   background: transparent;
   border: none;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   font-size: 13px;
   font-weight: 600;
   padding: 10px 16px;
@@ -776,13 +776,13 @@ export default {
 
 .mode-tab:hover {
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.6);
 }
 
 .mode-tab.active {
-  background: linear-gradient(135deg, #1d4ed8 0%, #eab308 100%);
+  background: linear-gradient(135deg, #0284c7 0%, #f59e0b 100%);
   color: #ffffff;
-  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
+  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.3);
 }
 
 .mode-icon {
@@ -794,9 +794,9 @@ export default {
   align-items: center;
   gap: 8px;
   font-size: 11px;
-  color: #8be9fd;
-  background: rgba(139, 233, 253, 0.08);
-  border: 1px solid rgba(139, 233, 253, 0.2);
+  color: #0369a1;
+  background: rgba(2, 132, 199, 0.08);
+  border: 1px solid rgba(2, 132, 199, 0.25);
   padding: 8px 12px;
   border-radius: 10px;
   line-height: 1.4;
