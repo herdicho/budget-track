@@ -2,6 +2,7 @@ import os
 import uuid
 import time
 from datetime import datetime
+from typing import Optional
 from dotenv import load_dotenv
 from supabase import create_client, Client
 
