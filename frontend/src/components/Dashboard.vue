@@ -35,7 +35,7 @@
       <div class="budget-header">
         <div style="display: flex; gap: 32px; flex-wrap: wrap;">
           <div>
-            <span class="section-subtitle">Sisa Anggaran Belanja</span>
+            <span class="section-subtitle">Sisa Anggaran ({{ dashboardBudgetMode === 'pure' ? 'Pure' : 'Semua' }})</span>
             <h1 class="remaining-value" :class="{ 'warning-text': remainingPercent < 20, 'danger-text': remainingPercent <= 0 }">
               {{ formatCurrency(remainingForBudget) }}
             </h1>
@@ -49,6 +49,24 @@
         </div>
         <button @click="openBudgetEdit" class="edit-budget-btn" title="Edit Anggaran & Pendapatan">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="16 3 21 8 8 21 3 21 3 16 16 3"></polygon></svg>
+        </button>
+      </div>
+
+      <!-- Budget Mode Switcher Tabs -->
+      <div class="dash-budget-mode-switcher">
+        <button 
+          class="dash-mode-btn" 
+          :class="{ active: dashboardBudgetMode === 'pure' }"
+          @click="dashboardBudgetMode = 'pure'"
+        >
+          🛍️ Pure Bulanan
+        </button>
+        <button 
+          class="dash-mode-btn" 
+          :class="{ active: dashboardBudgetMode === 'all' }"
+          @click="dashboardBudgetMode = 'all'"
+        >
+          🌐 Keseluruhan
         </button>
       </div>
 
@@ -76,7 +94,7 @@
           <span class="grid-item-val font-success">{{ formatCurrency(summary.income) }}</span>
         </div>
         <div class="budget-grid-item text-right">
-          <span class="grid-item-label">Total Terpakai</span>
+          <span class="grid-item-label">Terpakai ({{ dashboardBudgetMode === 'pure' ? 'Pure' : 'Semua' }})</span>
           <span class="grid-item-val font-danger">{{ formatCurrency(spentForBudget) }}</span>
         </div>
       </div>
@@ -438,13 +456,35 @@ export default {
     const savingBudget = ref(false)
     const budgetInputRef = ref(null)
 
+    const dashboardBudgetMode = ref('pure') // 'pure' | 'all'
+
+    const pureCategories = [
+      'makanan',
+      'transportasi',
+      'sosial & ibadah',
+      'kebutuhan bulanan',
+      'kebutuhan bayi'
+    ]
+
+    const isPureCategory = (catName) => {
+      if (!catName) return false
+      const norm = catName.trim().toLowerCase().replace(/\s*&\s*/g, ' ').replace(/\s+dan\s+/g, ' ')
+      return pureCategories.some(p => p.replace(/\s*&\s*/g, ' ').replace(/\s+dan\s+/g, ' ') === norm)
+    }
+
     // Percentage Computations
     const spentForBudget = computed(() => {
-      const total = summary.value.total_spent || 0
       const cats = summary.value.categories || {}
-      const keluargaKey = Object.keys(cats).find(k => k.toLowerCase() === 'keluarga')
-      const keluargaSpent = keluargaKey ? (cats[keluargaKey] || 0) : 0
-      return Math.max(0, total - keluargaSpent)
+      if (dashboardBudgetMode.value === 'pure') {
+        return Object.entries(cats)
+          .filter(([name]) => isPureCategory(name))
+          .reduce((sum, [, amt]) => sum + (amt || 0), 0)
+      } else {
+        const total = summary.value.total_spent || 0
+        const keluargaKey = Object.keys(cats).find(k => k.toLowerCase() === 'keluarga')
+        const keluargaSpent = keluargaKey ? (cats[keluargaKey] || 0) : 0
+        return Math.max(0, total - keluargaSpent)
+      }
     })
 
     const remainingForBudget = computed(() => {
@@ -776,6 +816,7 @@ export default {
 
     return {
       currentMonth,
+      dashboardBudgetMode,
       summary,
       spentPercent,
       remainingPercent,
@@ -1477,5 +1518,41 @@ export default {
   background: rgba(236, 72, 153, 0.15);
   color: #f472b6;
   border: 1px solid rgba(236, 72, 153, 0.3);
+}
+
+/* Dashboard Budget Mode Switcher */
+.dash-budget-mode-switcher {
+  display: flex;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--glass-border);
+  padding: 3px;
+  border-radius: 12px;
+  gap: 4px;
+  margin: 12px 0;
+}
+
+.dash-mode-btn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  text-align: center;
+}
+
+.dash-mode-btn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.dash-mode-btn.active {
+  background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(236, 72, 153, 0.25);
 }
 </style>

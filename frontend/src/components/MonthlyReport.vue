@@ -323,15 +323,14 @@ export default {
       'makanan',
       'transportasi',
       'sosial & ibadah',
-      'sosial ibadah',
       'kebutuhan bulanan',
       'kebutuhan bayi'
     ]
 
     const isPureCategory = (catName) => {
       if (!catName) return false
-      const norm = catName.trim().toLowerCase()
-      return pureCategories.includes(norm)
+      const norm = catName.trim().toLowerCase().replace(/\s*&\s*/g, ' ').replace(/\s+dan\s+/g, ' ')
+      return pureCategories.some(p => p.replace(/\s*&\s*/g, ' ').replace(/\s+dan\s+/g, ' ') === norm)
     }
 
     const fetchReportData = async () => {
@@ -537,17 +536,12 @@ export default {
       }
     })
 
-    // Calculations - spent for budget
+    // Calculations - spent for budget (Pure Bulanan categories only)
     const spentForBudget = computed(() => {
-      if (reportMode.value === 'pure') {
-        return activeModeSpent.value
-      } else {
-        const total = summary.value.total_spent || 0
-        const cats = summary.value.categories || {}
-        const keluargaKey = Object.keys(cats).find(k => k.toLowerCase() === 'keluarga')
-        const keluargaSpent = keluargaKey ? (cats[keluargaKey] || 0) : 0
-        return Math.max(0, total - keluargaSpent)
-      }
+      const cats = summary.value.categories || {}
+      return Object.entries(cats)
+        .filter(([name]) => isPureCategory(name))
+        .reduce((sum, [, amt]) => sum + (amt || 0), 0)
     })
 
     const budgetSpentPercent = computed(() => {
