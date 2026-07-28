@@ -545,9 +545,7 @@ export default {
 
     const activeBudgetLimit = computed(() => {
       if (reportMode.value === 'pure') {
-        return (summary.value.budget_pure && summary.value.budget_pure > 0)
-          ? summary.value.budget_pure
-          : (summary.value.budget || 0)
+        return summary.value.budget_pure || 0
       } else {
         return summary.value.budget || 0
       }

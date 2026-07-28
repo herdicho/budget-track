@@ -416,17 +416,6 @@
             </span>
           </div>
 
-          <div class="form-group" style="margin-bottom: 20px;">
-            <label class="form-label" style="text-align: left; display: block; margin-bottom: 6px;">💵 Estimasi Pendapatan Bulan Ini (Rp)</label>
-            <input 
-              type="number" 
-              v-model="newIncomeAmount" 
-              class="form-input budget-input" 
-              placeholder="Total Gaji / Income"
-              min="0"
-            />
-          </div>
-
           <div class="modal-actions" style="margin-top: 20px;">
             <button type="button" @click="editingBudget = false" class="btn btn-secondary">Batal</button>
             <button type="submit" class="btn btn-primary" :disabled="savingBudget">Simpan</button>
@@ -511,9 +500,7 @@ export default {
     // Active budget limit depends on mode (Pure Bulanan limit vs Keseluruhan limit)
     const activeBudgetLimit = computed(() => {
       if (dashboardBudgetMode.value === 'pure') {
-        return (summary.value.budget_pure && summary.value.budget_pure > 0)
-          ? summary.value.budget_pure
-          : (summary.value.budget || 0)
+        return summary.value.budget_pure || 0
       } else {
         return summary.value.budget || 0
       }
@@ -720,10 +707,7 @@ export default {
     // Budget Editor
     const openBudgetEdit = () => {
       newBudgetAmount.value = summary.value.budget || 0
-      newBudgetPureAmount.value = (summary.value.budget_pure && summary.value.budget_pure > 0)
-        ? summary.value.budget_pure
-        : (summary.value.budget || 0)
-      newIncomeAmount.value = summary.value.income || 0
+      newBudgetPureAmount.value = summary.value.budget_pure || 0
       editingBudget.value = true
       nextTick(() => {
         if (budgetInputRef.value) budgetInputRef.value.focus()
@@ -741,9 +725,8 @@ export default {
           },
           body: JSON.stringify({
             month: currentMonth.value,
-            amount: parseFloat(newBudgetAmount.value),
-            budget_pure: parseFloat(newBudgetPureAmount.value),
-            income: parseFloat(newIncomeAmount.value)
+            amount: parseFloat(newBudgetAmount.value) || 0,
+            budget_pure: parseFloat(newBudgetPureAmount.value) || 0
           })
         })
         if (response.ok) {
