@@ -554,7 +554,24 @@ export default {
           }
         })
         if (response.ok) {
-          summary.value = await response.json()
+          const data = await response.json()
+          
+          // Fallback: if summary doesn't include budget_pure, fetch from /api/budget directly
+          if (data.budget_pure === undefined || data.budget_pure === null) {
+            try {
+              const budgetRes = await fetch(`${props.apiUrl}/api/budget?month=${currentMonth.value}`, {
+                headers: { 'X-App-Password': props.authPassword }
+              })
+              if (budgetRes.ok) {
+                const budgetData = await budgetRes.json()
+                data.budget_pure = budgetData.budget_pure || 0
+              }
+            } catch (e) {
+              console.warn("Could not fetch budget_pure separately:", e)
+            }
+          }
+          
+          summary.value = data
           emit('refresh-sources')
           emit('refresh-categories')
         }
