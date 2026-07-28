@@ -315,7 +315,7 @@
             />
             <!-- Center Label -->
             <text x="70" y="65" text-anchor="middle" class="donut-center-title">TOTAL BELANJA</text>
-            <text x="70" y="85" text-anchor="middle" class="donut-center-value">{{ formatCurrencyShort(spentForBudget) }}</text>
+            <text x="70" y="85" text-anchor="middle" class="donut-center-value">{{ formatCurrencyShort(totalSpentAll) }}</text>
           </svg>
         </div>
 
@@ -638,17 +638,23 @@ export default {
     }
 
     // SVG Donut segments calculations
+    // Total spent across ALL categories (for proporsi chart)
+    const totalSpentAll = computed(() => {
+      const cats = summary.value.categories || {}
+      return Object.values(cats).reduce((a, b) => a + b, 0)
+    })
+
     const chartSegments = computed(() => {
       const cats = summary.value.categories || {}
-      // Exclude Keluarga from chart (same as budget)
-      const filteredCats = Object.entries(cats).filter(([name]) => name.toLowerCase() !== 'keluarga')
-      const total = filteredCats.reduce((a, [, b]) => a + b, 0)
+      // Show ALL categories in proporsi chart
+      const allCats = Object.entries(cats).sort((a, b) => b[1] - a[1])
+      const total = allCats.reduce((a, [, b]) => a + b, 0)
       if (total <= 0) return []
 
       let cumulativeOffset = 0
       const circumference = 2 * Math.PI * 50 // 314.159
 
-      return filteredCats.map(([name, amount]) => {
+      return allCats.map(([name, amount]) => {
         const percentage = (amount / total) * 100
         const segLen = (amount / total) * circumference
         const seg = {
@@ -911,6 +917,7 @@ export default {
       fetchSummary,
       loading,
       chartSegments,
+      totalSpentAll,
       newSourceName,
       newSourceType,
       addingSource,
