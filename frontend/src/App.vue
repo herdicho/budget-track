@@ -19,6 +19,8 @@
         :authPassword="authPassword" 
         :paymentSources="paymentSources"
         :categories="categories"
+        :reportMode="reportMode"
+        @update:reportMode="setReportMode"
         ref="dashboardRef"
         @logout="onLogout"
         @trigger-upload="currentView = 'uploader'"
@@ -69,6 +71,8 @@
         :authPassword="authPassword"
         :paymentSources="paymentSources"
         :categories="categories"
+        :reportMode="reportMode"
+        @update:reportMode="setReportMode"
         @back="currentView = 'dashboard'"
       />
     </Transition>
@@ -206,6 +210,13 @@ export default {
       }
     }
 
+    const reportMode = ref(localStorage.getItem('app_report_mode') || 'pure')
+
+    const setReportMode = (newMode) => {
+      reportMode.value = newMode
+      localStorage.setItem('app_report_mode', newMode)
+    }
+
     return {
       currentView,
       authPassword,
@@ -216,6 +227,8 @@ export default {
       fetchPaymentSources,
       categories,
       fetchCategories,
+      reportMode,
+      setReportMode,
       onLoginSuccess,
       onLogout,
       onUploadSuccess,

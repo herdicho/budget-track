@@ -299,13 +299,20 @@ export default {
     categories: {
       type: Array,
       required: true
+    },
+    reportMode: {
+      type: String,
+      default: 'pure'
     }
   },
-  emits: ['back'],
-  setup(props) {
+  emits: ['back', 'update:reportMode'],
+  setup(props, { emit }) {
     const selectedMonth = ref(new Date().toISOString().substring(0, 7))
     const loading = ref(false)
-    const reportMode = ref('pure') // 'pure' | 'all'
+    const reportMode = computed({
+      get: () => props.reportMode || 'pure',
+      set: (val) => emit('update:reportMode', val)
+    })
     const summary = ref({
       month: selectedMonth.value,
       budget: 0.0,
@@ -773,9 +780,9 @@ export default {
 }
 
 .mode-tab.active {
-  background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
+  background: linear-gradient(135deg, #1d4ed8 0%, #eab308 100%);
   color: #ffffff;
-  box-shadow: 0 4px 12px rgba(236, 72, 153, 0.3);
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
 }
 
 .mode-icon {

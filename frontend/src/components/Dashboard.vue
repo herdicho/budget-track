@@ -431,9 +431,13 @@ export default {
     categories: {
       type: Array,
       required: true
+    },
+    reportMode: {
+      type: String,
+      default: 'pure'
     }
   },
-  emits: ['logout', 'trigger-upload', 'trigger-manual', 'trigger-report', 'trigger-edit', 'refresh-sources', 'refresh-categories', 'view-all'],
+  emits: ['logout', 'trigger-upload', 'trigger-manual', 'trigger-report', 'trigger-edit', 'refresh-sources', 'refresh-categories', 'view-all', 'update:reportMode'],
   setup(props, { emit }) {
     const loading = ref(true)
     const currentMonth = ref(new Date().toISOString().substring(0, 7)) // Format: YYYY-MM
@@ -456,7 +460,10 @@ export default {
     const savingBudget = ref(false)
     const budgetInputRef = ref(null)
 
-    const dashboardBudgetMode = ref('pure') // 'pure' | 'all'
+    const dashboardBudgetMode = computed({
+      get: () => props.reportMode || 'pure',
+      set: (val) => emit('update:reportMode', val)
+    })
 
     const pureCategories = [
       'makanan',
@@ -1551,8 +1558,8 @@ export default {
 }
 
 .dash-mode-btn.active {
-  background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
+  background: linear-gradient(135deg, #1d4ed8 0%, #eab308 100%);
   color: #ffffff;
-  box-shadow: 0 2px 8px rgba(236, 72, 153, 0.25);
+  box-shadow: 0 3px 12px rgba(37, 99, 235, 0.4);
 }
 </style>

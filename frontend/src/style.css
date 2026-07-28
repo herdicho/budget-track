@@ -5,24 +5,25 @@
 
   color-scheme: dark;
   
-  /* Modern Dark Mode Color System */
-  --bg-gradient-start: #080c14;
-  --bg-gradient-end: #0f1524;
+  /* Modern Royal Blue & Cyber Yellow Dark Mode Color System */
+  --bg-gradient-start: #060b18;
+  --bg-gradient-end: #0a1329;
   
-  --glass-bg: rgba(255, 255, 255, 0.03);
-  --glass-border: rgba(255, 255, 255, 0.07);
-  --glass-glow: rgba(76, 201, 240, 0.12);
+  --glass-bg: rgba(255, 255, 255, 0.035);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-glow: rgba(59, 130, 246, 0.15);
   
-  --color-primary: #ffd166;
-  --color-primary-light: #ffe29a;
-  --color-secondary: #4cc9f0;
+  --color-primary: #facc15;       /* Vivid Cyber Yellow */
+  --color-primary-light: #fef08a; /* Light Gold Yellow */
+  --color-secondary: #3b82f6;     /* Royal Electric Blue */
+  --color-secondary-dark: #1d4ed8;
   
   --color-success: #10b981;
   --color-success-light: #34d399;
   --color-danger: #f43f5e;
   --color-danger-light: #fb7185;
-  --color-warning: #ffd166;
-  --color-warning-light: #ffe29a;
+  --color-warning: #f59e0b;
+  --color-warning-light: #fbbf24;
   
   --text-primary: #f8fafc;
   --text-secondary: #94a3b8;
@@ -47,7 +48,7 @@ html {
 }
 
 body {
-  background: radial-gradient(circle at 50% 0%, #17253d 0%, var(--bg-gradient-start) 60%), var(--bg-gradient-end);
+  background: radial-gradient(circle at 50% 0%, #0e244d 0%, var(--bg-gradient-start) 65%), var(--bg-gradient-end);
   background-attachment: fixed;
   color: var(--text-primary);
   min-height: 100vh;
@@ -107,14 +108,14 @@ body {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
-  color: #0c1020;
-  box-shadow: 0 4px 15px rgba(76, 201, 240, 0.25);
+  background: linear-gradient(135deg, #2563eb 0%, #facc15 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 18px rgba(37, 99, 235, 0.35);
 }
 
 .btn-primary:active {
   transform: scale(0.98);
-  box-shadow: 0 2px 8px rgba(76, 201, 240, 0.15);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.2);
 }
 
 .btn-secondary {
@@ -239,10 +240,10 @@ body {
   width: 56px;
   height: 56px;
   border-radius: 28px;
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
-  color: #0c1020;
+  background: linear-gradient(135deg, #2563eb 0%, #facc15 100%);
+  color: #ffffff;
   border: none;
-  box-shadow: 0 4px 20px rgba(76, 201, 240, 0.4);
+  box-shadow: 0 4px 20px rgba(37, 99, 235, 0.45);
   display: flex;
   align-items: center;
   justify-content: center;
