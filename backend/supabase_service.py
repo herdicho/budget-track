@@ -340,7 +340,20 @@ def get_categories():
         return mock_categories
     try:
         res = execute_with_retry(lambda c: c.table("categories").select("*").order("name").execute())
-        return res.data
+        existing = res.data or []
+        existing_names = {c.get("name", "").lower() for c in existing}
+        
+        # Check for missing default categories
+        missing = [cat for cat in mock_categories if cat["name"].lower() not in existing_names]
+        if missing:
+            try:
+                execute_with_retry(lambda c: c.table("categories").insert(missing).execute())
+                res_updated = execute_with_retry(lambda c: c.table("categories").select("*").order("name").execute())
+                return res_updated.data
+            except Exception as insert_err:
+                print(f"Auto-insert missing categories to Supabase failed: {insert_err}")
+                return sorted(existing + missing, key=lambda x: x.get("name", ""))
+        return existing
     except Exception as e:
         print(f"Error fetching categories table: {e}. Falling back to mock categories.")
         return mock_categories
