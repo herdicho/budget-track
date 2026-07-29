@@ -420,7 +420,7 @@
               required
             />
             <span style="font-size: 11px; color: var(--text-muted); display: block; margin-top: 4px; text-align: left;">
-              Batas belanja total termasuk Hiburan, Liburan, Perlengkapan/Aset, dll.
+              Batas belanja total termasuk Hiburan, Liburan, Kesehatan, dll.
             </span>
           </div>
 
