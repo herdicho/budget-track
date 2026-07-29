@@ -51,13 +51,13 @@
     </div>
 
     <div v-else class="report-content">
-      <!-- Executive Summary Card (Unified 27th Cutoff Financial Dashboard) -->
-      <section class="cycle-savings-card glass-panel" style="margin-bottom: 24px; padding: 20px; border-radius: 20px; background: linear-gradient(135deg, rgba(15, 23, 42, 0.65), rgba(30, 41, 59, 0.75)); border: 1px solid var(--glass-border); box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);">
+      <!-- Executive Summary Card (Light Sky Glass Theme) -->
+      <section class="cycle-savings-card glass-panel" style="margin-bottom: 24px; padding: 20px; border-radius: 24px;">
         
         <!-- Header Row -->
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; border-bottom: 1px solid rgba(14, 165, 233, 0.12); padding-bottom: 12px;">
           <div>
-            <h3 class="section-title" style="margin-bottom: 4px; font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 6px;">
+            <h3 class="section-title" style="margin-bottom: 4px; font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 6px; color: var(--text-primary);">
               🎯 Ringkasan Siklus {{ formatCutoffPeriod(selectedMonth) }}
             </h3>
             <span style="font-size: 11px; color: var(--text-muted);">Hasil akhir pemasukan, pengeluaran & sisa kas</span>
@@ -75,44 +75,44 @@
         <!-- 4 Key Financial Metrics (2x2 Grid) -->
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 16px;">
           <!-- 1. Total Pemasukan -->
-          <div style="background: rgba(255, 255, 255, 0.04); padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.06);">
+          <div style="background: rgba(255, 255, 255, 0.55); padding: 12px 14px; border-radius: 16px; border: 1px solid var(--glass-border); box-shadow: 0 2px 8px rgba(14, 165, 233, 0.06);">
             <span style="font-size: 10px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 4px;">💵 Pemasukan</span>
-            <span style="font-size: 15px; font-weight: 800; color: #10b981; display: block;">{{ formatCurrency(summary.income) }}</span>
+            <span style="font-size: 16px; font-weight: 800; color: #059669; display: block;">{{ formatCurrency(summary.income) }}</span>
           </div>
 
           <!-- 2. Total Pengeluaran -->
-          <div style="background: rgba(255, 255, 255, 0.04); padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.06);">
+          <div style="background: rgba(255, 255, 255, 0.55); padding: 12px 14px; border-radius: 16px; border: 1px solid var(--glass-border); box-shadow: 0 2px 8px rgba(14, 165, 233, 0.06);">
             <span style="font-size: 10px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 4px;">💸 Pengeluaran ({{ reportMode === 'pure' ? 'Pure' : 'Semua' }})</span>
-            <span style="font-size: 15px; font-weight: 800; color: #f43f5e; display: block;">{{ formatCurrency(activeModeSpent) }}</span>
+            <span style="font-size: 16px; font-weight: 800; color: #e11d48; display: block;">{{ formatCurrency(activeModeSpent) }}</span>
           </div>
 
           <!-- 3. Nabung Bersih Siklus -->
-          <div style="background: rgba(255, 255, 255, 0.04); padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.06);">
+          <div style="background: rgba(255, 255, 255, 0.55); padding: 12px 14px; border-radius: 16px; border: 1px solid var(--glass-border); box-shadow: 0 2px 8px rgba(14, 165, 233, 0.06);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
               <span style="font-size: 10px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">💰 Nabung Bersih</span>
-              <span style="font-size: 10px; font-weight: 700; color: #f59e0b;">{{ cycleSavingsPercent }}%</span>
+              <span style="font-size: 10px; font-weight: 700; color: #d97706;">{{ cycleSavingsPercent }}%</span>
             </div>
-            <span style="font-size: 15px; font-weight: 800; display: block;" :style="{ color: cycleSavingsAmount >= 0 ? '#38bdf8' : '#ef4444' }">
+            <span style="font-size: 16px; font-weight: 800; display: block;" :style="{ color: cycleSavingsAmount >= 0 ? '#0284c7' : '#dc2626' }">
               {{ formatCurrency(cycleSavingsAmount) }}
             </span>
           </div>
 
           <!-- 4. Total Sisa Kas Kumulatif -->
-          <div style="background: rgba(255, 255, 255, 0.04); padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.06);">
+          <div style="background: rgba(255, 255, 255, 0.55); padding: 12px 14px; border-radius: 16px; border: 1px solid var(--glass-border); box-shadow: 0 2px 8px rgba(14, 165, 233, 0.06);">
             <span style="font-size: 10px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 4px;">🏦 Sisa Uang Net</span>
-            <span style="font-size: 15px; font-weight: 800; color: #22d3ee; display: block;">{{ formatCurrency(summary.net_balance) }}</span>
+            <span style="font-size: 16px; font-weight: 800; color: #0891b2; display: block;">{{ formatCurrency(summary.net_balance) }}</span>
           </div>
         </div>
 
         <!-- Budget Compliance Progress Bar -->
-        <div style="background: rgba(0, 0, 0, 0.25); padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.05);">
+        <div style="background: rgba(255, 255, 255, 0.45); padding: 12px 14px; border-radius: 16px; border: 1px solid var(--glass-border);">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 11px; flex-wrap: wrap; gap: 4px;">
             <span style="color: var(--text-muted); font-weight: 600;">📊 Status Batas Anggaran ({{ reportMode === 'pure' ? 'Pure' : 'Semua' }})</span>
             <span style="font-weight: 700; color: var(--text-primary);">
-              {{ formatCurrency(spentForBudget) }} / <span style="color: var(--amber-glow);">{{ formatCurrency(activeBudgetLimit) }}</span> ({{ budgetSpentPercent }}%)
+              {{ formatCurrency(spentForBudget) }} / <span style="color: #d97706;">{{ formatCurrency(activeBudgetLimit) }}</span> ({{ budgetSpentPercent }}%)
             </span>
           </div>
-          <div style="width: 100%; height: 8px; background: rgba(255, 255, 255, 0.1); border-radius: 10px; overflow: hidden;">
+          <div style="width: 100%; height: 8px; background: rgba(0, 0, 0, 0.08); border-radius: 10px; overflow: hidden;">
             <div 
               style="height: 100%; border-radius: 10px; transition: width 0.4s ease;"
               :style="{ width: `${budgetSpentPercent}%`, backgroundColor: budgetSpentPercent > 100 ? '#ef4444' : budgetSpentPercent > 85 ? '#f59e0b' : '#10b981' }"
