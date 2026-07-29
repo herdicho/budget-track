@@ -10,7 +10,10 @@
       <!-- Month Navigator -->
       <div class="month-navigator">
         <button @click="changeMonth(-1)" class="nav-btn">&lsaquo;</button>
-        <span class="month-title">{{ formatMonthLabel(selectedMonth) }}</span>
+        <div style="text-align: center;">
+          <span class="month-title" style="display: block;">{{ formatMonthLabel(selectedMonth) }}</span>
+          <span style="font-size: 11px; font-weight: 600; color: var(--amber-glow); display: block; margin-top: 2px;">({{ formatCutoffPeriod(selectedMonth) }})</span>
+        </div>
         <button @click="changeMonth(1)" class="nav-btn">&rsaquo;</button>
       </div>
 
@@ -48,6 +51,40 @@
     </div>
 
     <div v-else class="report-content">
+      <!-- 0. Rekap Akhir Siklus (Per Tanggal 26) -->
+      <section class="cycle-savings-card glass-panel" style="margin-bottom: 20px; padding: 18px; border-radius: 16px; background: linear-gradient(135deg, rgba(2, 132, 199, 0.12), rgba(245, 158, 11, 0.08)); border: 1px solid var(--glass-border);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+          <div>
+            <h3 class="section-title" style="margin-bottom: 2px;">🎯 Rekap Keuangan Akhir Siklus (Per Tgl 26)</h3>
+            <span style="font-size: 11px; color: var(--text-muted);">Hasil akhir keuangan periode {{ formatCutoffPeriod(selectedMonth) }}</span>
+          </div>
+          <span class="status-tag" :class="cycleSavingsAmount >= 0 ? 'success' : 'danger'" style="padding: 4px 10px; font-size: 11px; font-weight: 700;">
+            {{ cycleSavingsAmount >= 0 ? '🟢 Surplus / Nabung' : '🔴 Defisit' }}
+          </span>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-top: 8px;">
+          <div style="background: rgba(255, 255, 255, 0.05); padding: 10px 12px; border-radius: 12px; border: 1px solid var(--glass-border);">
+            <span style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">💵 Total Dapet Duit</span>
+            <span style="font-size: 14px; font-weight: 700; color: #10b981;">{{ formatCurrency(summary.income) }}</span>
+          </div>
+          <div style="background: rgba(255, 255, 255, 0.05); padding: 10px 12px; border-radius: 12px; border: 1px solid var(--glass-border);">
+            <span style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">💸 Total Pengeluaran ({{ reportMode === 'pure' ? 'Pure' : 'Semua' }})</span>
+            <span style="font-size: 14px; font-weight: 700; color: #f43f5e;">{{ formatCurrency(activeModeSpent) }}</span>
+          </div>
+          <div style="background: rgba(255, 255, 255, 0.05); padding: 10px 12px; border-radius: 12px; border: 1px solid var(--glass-border);">
+            <span style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">💰 Total Nabung Bersih</span>
+            <span style="font-size: 14px; font-weight: 700;" :style="{ color: cycleSavingsAmount >= 0 ? '#0284c7' : '#ef4444' }">
+              {{ formatCurrency(cycleSavingsAmount) }}
+            </span>
+          </div>
+          <div style="background: rgba(255, 255, 255, 0.05); padding: 10px 12px; border-radius: 12px; border: 1px solid var(--glass-border);">
+            <span style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">📈 % Uang Ditabung</span>
+            <span style="font-size: 14px; font-weight: 700; color: #f59e0b;">{{ cycleSavingsPercent }}%</span>
+          </div>
+        </div>
+      </section>
+
       <!-- 1. Metrics Grid Card -->
       <section class="metrics-grid">
         <!-- Inflow Card -->
@@ -604,12 +641,36 @@ export default {
       }
     })
 
+    const formatCutoffPeriod = (monthStr) => {
+      if (!monthStr) return ''
+      const parts = monthStr.split('-')
+      if (parts.length < 2) return ''
+      const y = Number(parts[0])
+      const m = Number(parts[1])
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des']
+      const prevM = m === 1 ? 12 : m - 1
+      return `27 ${months[prevM - 1]} - 26 ${months[m - 1]}`
+    }
+
     const activeBudgetLimit = computed(() => {
       if (reportMode.value === 'pure') {
         return summary.value.budget_pure || 0
       } else {
         return summary.value.budget || 0
       }
+    })
+
+    const cycleSavingsAmount = computed(() => {
+      const inc = summary.value.income || 0
+      const spent = activeModeSpent.value || 0
+      return inc - spent
+    })
+
+    const cycleSavingsPercent = computed(() => {
+      const inc = summary.value.income || 0
+      if (!inc || inc <= 0) return 0
+      const savings = cycleSavingsAmount.value
+      return Math.round((savings / inc) * 100)
     })
 
     // Calculations - spent for budget
@@ -773,7 +834,10 @@ export default {
       toggleWeek,
       insightEmoji,
       insightTitle,
-      insightDescription
+      insightDescription,
+      formatCutoffPeriod,
+      cycleSavingsAmount,
+      cycleSavingsPercent
     }
   }
 }
