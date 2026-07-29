@@ -51,67 +51,75 @@
     </div>
 
     <div v-else class="report-content">
-      <!-- 0. Rekap Akhir Siklus (Per Tanggal 26) -->
-      <section class="cycle-savings-card glass-panel" style="margin-bottom: 20px; padding: 18px; border-radius: 16px; background: linear-gradient(135deg, rgba(2, 132, 199, 0.12), rgba(245, 158, 11, 0.08)); border: 1px solid var(--glass-border);">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+      <!-- Executive Summary Card (Unified 27th Cutoff Financial Dashboard) -->
+      <section class="cycle-savings-card glass-panel" style="margin-bottom: 24px; padding: 20px; border-radius: 20px; background: linear-gradient(135deg, rgba(15, 23, 42, 0.65), rgba(30, 41, 59, 0.75)); border: 1px solid var(--glass-border); box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);">
+        
+        <!-- Header Row -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 12px;">
           <div>
-            <h3 class="section-title" style="margin-bottom: 2px;">🎯 Rekap Keuangan Akhir Siklus (Per Tgl 26)</h3>
-            <span style="font-size: 11px; color: var(--text-muted);">Hasil akhir keuangan periode {{ formatCutoffPeriod(selectedMonth) }}</span>
+            <h3 class="section-title" style="margin-bottom: 4px; font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 6px;">
+              🎯 Ringkasan Siklus {{ formatCutoffPeriod(selectedMonth) }}
+            </h3>
+            <span style="font-size: 11px; color: var(--text-muted);">Hasil akhir pemasukan, pengeluaran & sisa kas</span>
           </div>
-          <span class="status-tag" :class="cycleSavingsAmount >= 0 ? 'success' : 'danger'" style="padding: 4px 10px; font-size: 11px; font-weight: 700;">
-            {{ cycleSavingsAmount >= 0 ? '🟢 Surplus / Nabung' : '🔴 Defisit' }}
-          </span>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <span class="status-tag" :class="cycleSavingsAmount >= 0 ? 'success' : 'danger'" style="padding: 4px 10px; font-size: 11px; font-weight: 700; border-radius: 20px;">
+              {{ cycleSavingsAmount >= 0 ? '🟢 Surplus' : '🔴 Defisit' }}
+            </span>
+            <span class="status-tag" :class="budgetStatusClass" style="padding: 4px 10px; font-size: 11px; font-weight: 700; border-radius: 20px;">
+              {{ budgetStatusLabel }}
+            </span>
+          </div>
         </div>
 
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-top: 8px;">
-          <div style="background: rgba(255, 255, 255, 0.05); padding: 10px 12px; border-radius: 12px; border: 1px solid var(--glass-border);">
-            <span style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">💵 Total Dapet Duit</span>
-            <span style="font-size: 14px; font-weight: 700; color: #10b981;">{{ formatCurrency(summary.income) }}</span>
+        <!-- 4 Key Financial Metrics (2x2 Grid) -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 16px;">
+          <!-- 1. Total Pemasukan -->
+          <div style="background: rgba(255, 255, 255, 0.04); padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.06);">
+            <span style="font-size: 10px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 4px;">💵 Pemasukan</span>
+            <span style="font-size: 15px; font-weight: 800; color: #10b981; display: block;">{{ formatCurrency(summary.income) }}</span>
           </div>
-          <div style="background: rgba(255, 255, 255, 0.05); padding: 10px 12px; border-radius: 12px; border: 1px solid var(--glass-border);">
-            <span style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">💸 Total Pengeluaran ({{ reportMode === 'pure' ? 'Pure' : 'Semua' }})</span>
-            <span style="font-size: 14px; font-weight: 700; color: #f43f5e;">{{ formatCurrency(activeModeSpent) }}</span>
+
+          <!-- 2. Total Pengeluaran -->
+          <div style="background: rgba(255, 255, 255, 0.04); padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.06);">
+            <span style="font-size: 10px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 4px;">💸 Pengeluaran ({{ reportMode === 'pure' ? 'Pure' : 'Semua' }})</span>
+            <span style="font-size: 15px; font-weight: 800; color: #f43f5e; display: block;">{{ formatCurrency(activeModeSpent) }}</span>
           </div>
-          <div style="background: rgba(255, 255, 255, 0.05); padding: 10px 12px; border-radius: 12px; border: 1px solid var(--glass-border);">
-            <span style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">💰 Total Nabung Bersih</span>
-            <span style="font-size: 14px; font-weight: 700;" :style="{ color: cycleSavingsAmount >= 0 ? '#0284c7' : '#ef4444' }">
+
+          <!-- 3. Nabung Bersih Siklus -->
+          <div style="background: rgba(255, 255, 255, 0.04); padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.06);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+              <span style="font-size: 10px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">💰 Nabung Bersih</span>
+              <span style="font-size: 10px; font-weight: 700; color: #f59e0b;">{{ cycleSavingsPercent }}%</span>
+            </div>
+            <span style="font-size: 15px; font-weight: 800; display: block;" :style="{ color: cycleSavingsAmount >= 0 ? '#38bdf8' : '#ef4444' }">
               {{ formatCurrency(cycleSavingsAmount) }}
             </span>
           </div>
-          <div style="background: rgba(255, 255, 255, 0.05); padding: 10px 12px; border-radius: 12px; border: 1px solid var(--glass-border);">
-            <span style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">📈 % Uang Ditabung</span>
-            <span style="font-size: 14px; font-weight: 700; color: #f59e0b;">{{ cycleSavingsPercent }}%</span>
-          </div>
-        </div>
-      </section>
 
-      <!-- 1. Metrics Grid Card -->
-      <section class="metrics-grid">
-        <!-- Net Savings Card -->
-        <div class="metric-card glass-panel savings">
-          <div class="metric-icon">💰</div>
-          <div class="metric-info">
-            <span class="metric-label">Sisa Uang Net</span>
-            <h3 class="metric-val text-teal" :class="{ 'danger-text': summary.net_balance < 0 }">
-              {{ formatCurrency(summary.net_balance) }}
-            </h3>
+          <!-- 4. Total Sisa Kas Kumulatif -->
+          <div style="background: rgba(255, 255, 255, 0.04); padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.06);">
+            <span style="font-size: 10px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 4px;">🏦 Sisa Uang Net</span>
+            <span style="font-size: 15px; font-weight: 800; color: #22d3ee; display: block;">{{ formatCurrency(summary.net_balance) }}</span>
           </div>
         </div>
 
-        <!-- Budget Compliance Card -->
-        <div class="metric-card glass-panel compliance">
-          <div class="metric-icon">📊</div>
-          <div class="metric-info">
-            <span class="metric-label">Batas Anggaran ({{ reportMode === 'pure' ? 'Pure' : 'Semua' }})</span>
-            <div class="compliance-header">
-              <span class="metric-val small-val">{{ formatCurrency(spentForBudget) }} / {{ formatCurrency(activeBudgetLimit) }}</span>
-              <span class="status-tag" :class="budgetStatusClass">{{ budgetStatusLabel }}</span>
-            </div>
-            <div class="compliance-progress">
-              <div class="compliance-fill" :style="{ width: `${budgetSpentPercent}%` }" :class="budgetStatusClass"></div>
-            </div>
+        <!-- Budget Compliance Progress Bar -->
+        <div style="background: rgba(0, 0, 0, 0.25); padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.05);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 11px; flex-wrap: wrap; gap: 4px;">
+            <span style="color: var(--text-muted); font-weight: 600;">📊 Status Batas Anggaran ({{ reportMode === 'pure' ? 'Pure' : 'Semua' }})</span>
+            <span style="font-weight: 700; color: var(--text-primary);">
+              {{ formatCurrency(spentForBudget) }} / <span style="color: var(--amber-glow);">{{ formatCurrency(activeBudgetLimit) }}</span> ({{ budgetSpentPercent }}%)
+            </span>
+          </div>
+          <div style="width: 100%; height: 8px; background: rgba(255, 255, 255, 0.1); border-radius: 10px; overflow: hidden;">
+            <div 
+              style="height: 100%; border-radius: 10px; transition: width 0.4s ease;"
+              :style="{ width: `${budgetSpentPercent}%`, backgroundColor: budgetSpentPercent > 100 ? '#ef4444' : budgetSpentPercent > 85 ? '#f59e0b' : '#10b981' }"
+            ></div>
           </div>
         </div>
+
       </section>
 
       <!-- 2. Main Donut Chart (Full Width Layout) -->
