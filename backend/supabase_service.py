@@ -199,28 +199,64 @@ def upload_receipt(file_bytes: bytes, file_name: str, content_type: str = "image
         print(f"Error uploading receipt to Supabase storage: {e}")
         return ""
 
-def get_transactions(month: str = None):
+def get_cutoff_date_range(month_str: str, cutoff_day: int = 27):
+    """
+    Given a YYYY-MM string (e.g. '2026-08'), calculate start_date and end_date.
+    Start date: 27th of previous month (e.g. 2026-07-27)
+    End date: 26th of current month (e.g. 2026-08-26)
+    """
+    try:
+        year, month = map(int, month_str.split("-"))
+    except Exception:
+        now = datetime.now()
+        year, month = now.year, now.month
+
+    if month == 1:
+        prev_year = year - 1
+        prev_month = 12
+    else:
+        prev_year = year
+        prev_month = month - 1
+        
+    start_date = f"{prev_year:04d}-{prev_month:02d}-{cutoff_day:02d}"
+    end_day = cutoff_day - 1
+    end_date = f"{year:04d}-{month:02d}-{end_day:02d}"
+    return start_date, end_date
+
+def get_transactions(month: str = None, use_cutoff: bool = True, cutoff_day: int = 27):
     """
     Get all transactions. If month is provided (format YYYY-MM),
-    filter transactions for that month.
+    filter transactions for that cutoff cycle (27th prev month to 26th current month).
     """
+    start_date, end_date = None, None
+    if month and use_cutoff:
+        start_date, end_date = get_cutoff_date_range(month, cutoff_day)
+    elif month:
+        start_date = f"{month}-01"
+        try:
+            year, m = map(int, month.split("-"))
+            end_date = f"{year+1:04d}-01-01" if m == 12 else f"{year:04d}-{m+1:02d}-01"
+        except Exception:
+            pass
+
     if not _has_supabase_config:
-        # Sort local mock transactions descending by date and created_at
         res = sorted(mock_transactions, key=lambda t: (t["date"], t.get("created_at", "")), reverse=True)
-        if month:
+        if start_date and end_date:
+            if use_cutoff:
+                res = [t for t in res if start_date <= t["date"] <= end_date]
+            else:
+                res = [t for t in res if start_date <= t["date"] < end_date]
+        elif month:
             res = [t for t in res if t["date"].startswith(month)]
         return res
 
     def run_query(client):
         query = client.table("transactions").select("*").order("date", desc=True).order("created_at", desc=True)
-        if month:
-            start_date = f"{month}-01"
-            year, m = map(int, month.split("-"))
-            if m == 12:
-                end_date = f"{year+1}-01-01"
+        if start_date and end_date:
+            if use_cutoff:
+                query = query.gte("date", start_date).lte("date", end_date)
             else:
-                end_date = f"{year}-{m+1:02d}-01"
-            query = query.gte("date", start_date).lt("date", end_date)
+                query = query.gte("date", start_date).lt("date", end_date)
         return query.execute()
 
     res = execute_with_retry(run_query)
@@ -562,8 +598,11 @@ def get_dashboard_summary(month: str):
         user = t.get("user_name") or "Suami"
         users_breakdown[user] = users_breakdown.get(user, 0.0) + amount
         
+    start_date, end_date = get_cutoff_date_range(month)
     return {
         "month": month,
+        "cutoff_start": start_date,
+        "cutoff_end": end_date,
         "budget": budget_amount,
         "budget_pure": budget_pure_amount,
         "income": display_income,

@@ -15,7 +15,10 @@
       </div>
       <div class="month-selector">
         <button @click="changeMonth(-1)" class="month-nav-btn">&larr;</button>
-        <h2 class="current-month-label">{{ formatMonthLabel(currentMonth) }}</h2>
+        <div style="text-align: center;">
+          <h2 class="current-month-label" style="margin-bottom: 2px;">{{ formatMonthLabel(currentMonth) }}</h2>
+          <span style="font-size: 11px; font-weight: 600; color: var(--amber-glow); display: block;">({{ formatCutoffPeriod(currentMonth) }})</span>
+        </div>
         <button @click="changeMonth(1)" class="month-nav-btn">&rarr;</button>
       </div>
     </header>
@@ -132,9 +135,14 @@
     <section v-if="summary.balances && Object.keys(summary.balances).length > 0" class="sources-card glass-panel" style="margin-top: 16px;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
         <h3 class="section-title" style="margin-bottom: 0;">Saldo Sumber Dana</h3>
-        <button @click="showAddSourceForm = !showAddSourceForm" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px; width: auto; height: auto; min-height: unset; margin: 0;">
-          {{ showAddSourceForm ? 'Batal' : '+ Tambah' }}
-        </button>
+        <div style="display: flex; gap: 6px; align-items: center;">
+          <button @click="openAdjustBalanceModal" class="btn btn-secondary" style="padding: 6px 10px; font-size: 11px; width: auto; height: auto; min-height: unset; margin: 0; background: rgba(245, 158, 11, 0.15); color: var(--amber-glow); border-color: rgba(245, 158, 11, 0.3);">
+            🔄 Adjust Saldo
+          </button>
+          <button @click="showAddSourceForm = !showAddSourceForm" class="btn btn-secondary" style="padding: 6px 10px; font-size: 11px; width: auto; height: auto; min-height: unset; margin: 0;">
+            {{ showAddSourceForm ? 'Batal' : '+ Tambah' }}
+          </button>
+        </div>
       </div>
       <p class="section-subtitle" style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px; margin-top: -4px;">
         Dana tersedia saat ini di masing-masing tempat penyimpanan.
@@ -419,6 +427,57 @@
           <div class="modal-actions" style="margin-top: 20px;">
             <button type="button" @click="editingBudget = false" class="btn btn-secondary">Batal</button>
             <button type="submit" class="btn btn-primary" :disabled="savingBudget">Simpan</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Adjust Saldo / Rekonsiliasi Modal -->
+    <div v-if="adjustingBalance" class="modal-overlay" @click.self="adjustingBalance = false">
+      <div class="modal-content glass-panel">
+        <h3>🔄 Adjust Saldo / Rekonsiliasi</h3>
+        <p class="modal-desc" style="font-size: 12px; margin-bottom: 16px;">
+          Sinkronkan saldo tercatat di aplikasi dengan saldo fisik/m-banking asli. Selisih akan otomatis dicatat sebagai transaksi "Miss".
+        </p>
+        
+        <form @submit.prevent="saveBalanceAdjustment" class="budget-form">
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label class="form-label" style="text-align: left; display: block; margin-bottom: 6px;">Pilih Sumber Dana</label>
+            <select v-model="selectedAdjustSource" class="form-input select-input" style="text-align: left; background-position: right 12px center;" required>
+              <option v-for="(bal, sName) in summary.balances" :key="sName" :value="sName">
+                {{ sName }} (Tercatat: {{ formatCurrency(bal) }})
+              </option>
+            </select>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label class="form-label" style="text-align: left; display: block; margin-bottom: 6px;">Saldo Real Saat Ini (Rp)</label>
+            <input 
+              type="text" 
+              inputmode="numeric" 
+              v-model="adjustRealAmount" 
+              class="form-input budget-input" 
+              placeholder="Misal: 350.000"
+              required
+            />
+          </div>
+
+          <!-- Preview of Auto Transaction -->
+          <div v-if="selectedAdjustSource && adjustRealAmount" style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--glass-border); border-radius: 10px; padding: 12px; margin-bottom: 16px; font-size: 12px; text-align: left;">
+            <div style="margin-bottom: 4px; font-weight: 600; color: var(--text-primary);">
+              📝 Transaksi yang Akan Dicatat Otomatis:
+            </div>
+            <div style="color: var(--amber-glow); font-weight: 700; margin-bottom: 2px;">
+              Merchant: {{ getAdjustMerchantName() }}
+            </div>
+            <div style="color: var(--text-muted);">
+              Jumlah: {{ formatCurrency(Math.abs(getAdjustDiffAmount())) }} &bull; Kategori: {{ getAdjustDiffAmount() >= 0 ? 'Lain-lain' : 'Pendapatan' }}
+            </div>
+          </div>
+
+          <div class="modal-actions" style="margin-top: 20px;">
+            <button type="button" @click="adjustingBalance = false" class="btn btn-secondary">Batal</button>
+            <button type="submit" class="btn btn-primary" :disabled="savingAdjustment">Simpan & Sinkronkan</button>
           </div>
         </form>
       </div>
@@ -735,6 +794,96 @@ export default {
       return isNaN(parsed) ? 0 : parsed
     }
 
+    const formatCutoffPeriod = (monthStr) => {
+      if (!monthStr) return ''
+      const parts = monthStr.split('-')
+      if (parts.length < 2) return ''
+      const y = Number(parts[0])
+      const m = Number(parts[1])
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des']
+      const prevM = m === 1 ? 12 : m - 1
+      return `27 ${months[prevM - 1]} - 26 ${months[m - 1]}`
+    }
+
+    // Adjust Saldo / Rekonsiliasi State & Logic
+    const adjustingBalance = ref(false)
+    const selectedAdjustSource = ref('')
+    const adjustRealAmount = ref('')
+    const savingAdjustment = ref(false)
+
+    const openAdjustBalanceModal = () => {
+      const balanceKeys = Object.keys(summary.value.balances || {})
+      if (balanceKeys.length > 0) {
+        selectedAdjustSource.value = balanceKeys[0]
+        adjustRealAmount.value = String(summary.value.balances[balanceKeys[0]] || 0)
+      } else {
+        selectedAdjustSource.value = ''
+        adjustRealAmount.value = ''
+      }
+      adjustingBalance.value = true
+    }
+
+    const getAdjustDiffAmount = () => {
+      const current = summary.value.balances ? (summary.value.balances[selectedAdjustSource.value] || 0) : 0
+      const real = parseNumber(adjustRealAmount.value)
+      return current - real
+    }
+
+    const getAdjustMerchantName = () => {
+      const source = selectedAdjustSource.value || 'Cash'
+      const mLabel = formatMonthLabel(currentMonth.value)
+      const diff = getAdjustDiffAmount()
+      if (diff >= 0) {
+        return `Miss ${source} ${mLabel}`
+      } else {
+        return `Penyesuaian ${source} ${mLabel}`
+      }
+    }
+
+    const saveBalanceAdjustment = async () => {
+      if (!selectedAdjustSource.value) return
+      savingAdjustment.value = true
+      try {
+        const diff = getAdjustDiffAmount()
+        if (diff === 0) {
+          adjustingBalance.value = false
+          return
+        }
+
+        const merchantName = getAdjustMerchantName()
+        const amountVal = Math.abs(diff)
+        const categoryVal = diff > 0 ? 'Lain-lain' : 'Pendapatan'
+        const todayStr = new Date().toISOString().substring(0, 10)
+        const userName = selectedAdjustSource.value.toLowerCase().includes('istri') ? 'Istri' : 'Suami'
+
+        const response = await fetch(`${props.apiUrl}/api/transactions`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-App-Password': props.authPassword
+          },
+          body: JSON.stringify({
+            merchant: merchantName,
+            date: todayStr,
+            category: categoryVal,
+            payment_source: selectedAdjustSource.value,
+            amount: amountVal,
+            user_name: userName,
+            items: []
+          })
+        })
+
+        if (response.ok) {
+          await fetchSummary()
+          adjustingBalance.value = false
+        }
+      } catch (err) {
+        console.error("Error saving balance adjustment:", err)
+      } finally {
+        savingAdjustment.value = false
+      }
+    }
+
     // Budget Editor
     const openBudgetEdit = () => {
       newBudgetAmount.value = summary.value.budget ? String(summary.value.budget) : ''
@@ -928,7 +1077,16 @@ export default {
       newCategoryEmoji,
       newCategoryColor,
       addingCategory,
-      addNewCategory
+      addNewCategory,
+      formatCutoffPeriod,
+      adjustingBalance,
+      selectedAdjustSource,
+      adjustRealAmount,
+      savingAdjustment,
+      openAdjustBalanceModal,
+      getAdjustDiffAmount,
+      getAdjustMerchantName,
+      saveBalanceAdjustment
     }
   }
 }
