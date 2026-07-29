@@ -164,6 +164,7 @@ mock_categories = [
     {"name": "Sosial & Ibadah", "emoji": "🤲", "color": "#a78bfa"},
     {"name": "Hiburan", "emoji": "🎬", "color": "#bd93f9"},
     {"name": "Liburan & Perjalanan", "emoji": "🧳", "color": "#f1fa8c"},
+    {"name": "Perlengkapan & Acara", "emoji": "🧸", "color": "#ffb86c"},
     {"name": "Transfer", "emoji": "🔄", "color": "#0ea5e9"},
     {"name": "Pendapatan", "emoji": "💰", "color": "#50fa7b"},
     {"name": "Saldo Awal", "emoji": "🏁", "color": "#6272a4"},
