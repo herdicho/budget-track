@@ -411,6 +411,55 @@ export default {
       expandedWeeks.value[label] = !expandedWeeks.value[label]
     }
 
+    const getCutoffWeeklyRanges = (monthStr, cutoffDay = 27) => {
+      if (!monthStr || !monthStr.includes('-')) return []
+      const [year, month] = monthStr.split('-').map(Number)
+      const prevYear = month === 1 ? year - 1 : year
+      const prevMonth = month === 1 ? 12 : month - 1
+
+      const prevMonthPadded = String(prevMonth).padStart(2, '0')
+      const currMonthPadded = String(month).padStart(2, '0')
+
+      const monthsShort = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des']
+      const pName = monthsShort[prevMonth - 1]
+      const cName = monthsShort[month - 1]
+
+      return [
+        {
+          label: 'Minggu 1',
+          startStr: `${prevYear}-${prevMonthPadded}-27`,
+          endStr: `${year}-${currMonthPadded}-02`,
+          dateRange: `27 ${pName} - 02 ${cName}`,
+          total: 0,
+          transactions: []
+        },
+        {
+          label: 'Minggu 2',
+          startStr: `${year}-${currMonthPadded}-03`,
+          endStr: `${year}-${currMonthPadded}-09`,
+          dateRange: `03 ${cName} - 09 ${cName}`,
+          total: 0,
+          transactions: []
+        },
+        {
+          label: 'Minggu 3',
+          startStr: `${year}-${currMonthPadded}-10`,
+          endStr: `${year}-${currMonthPadded}-16`,
+          dateRange: `10 ${cName} - 16 ${cName}`,
+          total: 0,
+          transactions: []
+        },
+        {
+          label: 'Minggu 4',
+          startStr: `${year}-${currMonthPadded}-17`,
+          endStr: `${year}-${currMonthPadded}-26`,
+          dateRange: `17 ${cName} - 26 ${cName}`,
+          total: 0,
+          transactions: []
+        }
+      ]
+    }
+
     const weeklyData = computed(() => {
       const txs = monthTransactions.value || []
       // Filter expenses according to reportMode
@@ -425,18 +474,13 @@ export default {
       
       if (expenses.length === 0) return []
 
-      const weeks = [
-        { label: 'Minggu 1', start: 4, end: 10, dateRange: 'Tgl 4 - 10', total: 0, transactions: [] },
-        { label: 'Minggu 2', start: 11, end: 17, dateRange: 'Tgl 11 - 17', total: 0, transactions: [] },
-        { label: 'Minggu 3', start: 18, end: 24, dateRange: 'Tgl 18 - 24', total: 0, transactions: [] },
-        { label: 'Minggu 4', start: 25, end: 31, dateRange: 'Tgl 25 - 31', total: 0, transactions: [] }
-      ]
+      const weeks = getCutoffWeeklyRanges(selectedMonth.value)
 
       for (const tx of expenses) {
-        const day = new Date(tx.date).getDate()
+        const txDate = tx.date
         const amount = parseFloat(tx.amount) || 0
         for (const w of weeks) {
-          if (day >= w.start && day <= w.end) {
+          if (txDate >= w.startStr && txDate <= w.endStr) {
             w.total += amount
             w.transactions.push(tx)
             break
@@ -457,9 +501,9 @@ export default {
       const maxTotal = Math.max(...weeks.map(w => w.total), 1)
 
       return weeks.map(w => ({
-          ...w,
-          percent: w.total > 0 ? Math.max(Math.round((w.total / maxTotal) * 100), 3) : 0
-        }))
+        ...w,
+        percent: w.total > 0 ? Math.max(Math.round((w.total / maxTotal) * 100), 3) : 0
+      }))
     })
 
     const formatDateShort = (dateStr) => {
