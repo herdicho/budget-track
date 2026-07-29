@@ -87,24 +87,6 @@
 
       <!-- 1. Metrics Grid Card -->
       <section class="metrics-grid">
-        <!-- Inflow Card -->
-        <div class="metric-card glass-panel inflow">
-          <div class="metric-icon">💵</div>
-          <div class="metric-info">
-            <span class="metric-label">Total Pendapatan</span>
-            <h3 class="metric-val text-green">{{ formatCurrency(summary.income) }}</h3>
-          </div>
-        </div>
-
-        <!-- Outflow Card -->
-        <div class="metric-card glass-panel outflow">
-          <div class="metric-icon">🛒</div>
-          <div class="metric-info">
-            <span class="metric-label">Total Belanja ({{ reportMode === 'pure' ? 'Pure' : 'Semua' }})</span>
-            <h3 class="metric-val text-pink">{{ formatCurrency(activeModeSpent) }}</h3>
-          </div>
-        </div>
-
         <!-- Net Savings Card -->
         <div class="metric-card glass-panel savings">
           <div class="metric-icon">💰</div>
