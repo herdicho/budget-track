@@ -573,10 +573,7 @@ export default {
           .filter(([name]) => isPureCategory(name))
           .reduce((sum, [, amt]) => sum + (amt || 0), 0)
       } else {
-        const total = summary.value.total_spent || 0
-        const keluargaKey = Object.keys(cats).find(k => k.toLowerCase() === 'keluarga')
-        const keluargaSpent = keluargaKey ? (cats[keluargaKey] || 0) : 0
-        return Math.max(0, total - keluargaSpent)
+        return summary.value.total_spent || 0
       }
     })
 
