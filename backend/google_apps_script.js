@@ -49,11 +49,9 @@ function syncTransactionsToBudgetTrack() {
     var lastMessage = messages[messages.length - 1]; // Ambil pesan terbaru di thread
     
     var subject = lastMessage.getSubject();
-    var sender = lastMessage.getFrom();
-    var body = lastMessage.getPlainBody() || lastMessage.getBody();
-    
-    // Potong isi body agar tidak terlalu panjang saat dikirim
-    var cleanBody = body.substring(0, 5000);
+    var rawPlain = lastMessage.getPlainBody() || "";
+    var rawHtml = (lastMessage.getBody() || "").replace(/<[^>]*>?/gm, ' ');
+    var cleanBody = (rawPlain + "\n\n--- HTML TEXT ---\n\n" + rawHtml).substring(0, 6000);
     
     var payload = {
       subject: subject,
