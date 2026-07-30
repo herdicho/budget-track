@@ -68,12 +68,6 @@ class CategoryCreate(BaseModel):
     emoji: str = "📦"
     color: str = "#ff5555"
 
-class EmailWebhookRequest(BaseModel):
-    subject: str
-    sender: Optional[str] = ""
-    body: str
-    user_name: Optional[str] = "Istri"
-
 @app.post("/api/auth/verify")
 def verify_auth(req: LoginRequest):
     if req.password == APP_PASSWORD:
@@ -229,108 +223,6 @@ async def process_receipt(file: UploadFile = File(...)):
         return extracted
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Gagal memproses nota: {str(e)}")
-
-def resolve_valid_payment_source(raw_source: str, user_name: str) -> str:
-    """
-    Fetches active payment sources from Supabase and maps raw detected source (e.g. Gopay)
-    to valid database payment source name (e.g. Gopay Istri).
-    """
-    user_suffix = "Istri" if "istri" in (user_name or "").lower() else "Suami"
-    raw_lower = (raw_source or "").lower().replace(" ", "")
-    
-    try:
-        sources = supabase_service.get_payment_sources()
-        if not sources:
-            return f"Cash {user_suffix}"
-            
-        # 1. Best match: raw source keyword + user suffix
-        for s in sources:
-            s_name = s.get("name", "") if isinstance(s, dict) else str(s)
-            s_lower = s_name.lower().replace(" ", "")
-            if raw_lower in s_lower and user_suffix.lower() in s_lower:
-                return s_name
-                
-        # 2. General match: raw source keyword in source name
-        for s in sources:
-            s_name = s.get("name", "") if isinstance(s, dict) else str(s)
-            s_lower = s_name.lower().replace(" ", "")
-            if raw_lower in s_lower:
-                return s_name
-                
-        # 3. Fallback: Cash [User] or first source
-        for s in sources:
-            s_name = s.get("name", "") if isinstance(s, dict) else str(s)
-            if f"cash {user_suffix}".lower() in s_name.lower():
-                return s_name
-                
-        return sources[0]["name"] if isinstance(sources[0], dict) else str(sources[0])
-    except Exception as e:
-        print(f"Error resolving payment source: {e}")
-        return f"Cash {user_suffix}"
-
-@app.post("/api/webhooks/email", dependencies=[Depends(verify_app_password)])
-def handle_email_webhook(req: EmailWebhookRequest):
-    """
-    Receives email notification payload from Google Apps Script, parses it with Gemini AI,
-    and inserts valid financial transactions directly into Supabase.
-    """
-    try:
-        parsed = gemini_service.parse_email_transaction(
-            subject=req.subject,
-            sender=req.sender or "",
-            body=req.body or ""
-        )
-        
-        if not parsed.get("is_valid_transaction"):
-            return {
-                "status": "ignored",
-                "message": "Email tidak terdeteksi sebagai transaksi keuangan.",
-                "parsed": parsed
-            }
-            
-        amount = float(parsed.get("amount", 0.0))
-        if amount <= 0:
-            return {
-                "status": "ignored",
-                "message": "Nominal transaksi Rp 0 atau tidak valid.",
-                "parsed": parsed
-            }
-            
-        user_name = req.user_name or "Istri"
-        raw_source = parsed.get("payment_source", "Cash")
-        valid_source = resolve_valid_payment_source(raw_source, user_name)
-
-        # Resolve transfer_to only if category is 'Transfer' to satisfy FK constraint
-        valid_transfer_to = None
-        if parsed.get("category") == "Transfer" and parsed.get("transfer_to"):
-            try:
-                valid_transfer_to = resolve_valid_payment_source(parsed.get("transfer_to"), user_name)
-            except Exception:
-                valid_transfer_to = None
-
-        # Structure transaction for Supabase insert
-        tx_data = {
-            "merchant": parsed.get("merchant", "Email Transaction"),
-            "date": parsed.get("date") or datetime.today().strftime('%Y-%m-%d'),
-            "category": parsed.get("category", "Lain-lain"),
-            "payment_source": valid_source,
-            "amount": amount,
-            "user_name": user_name,
-            "items": [],
-            "receipt_url": None,
-            "transfer_to": valid_transfer_to
-        }
-        
-        created = supabase_service.create_transaction(tx_data)
-        return {
-            "status": "success",
-            "message": "Transaksi berhasil ter-input otomatis dari email!",
-            "data": created,
-            "parsed": parsed
-        }
-    except Exception as e:
-        print(f"Error handling email webhook: {e}")
-        raise HTTPException(status_code=500, detail=f"Gagal memproses email webhook: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn

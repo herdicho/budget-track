@@ -272,33 +272,8 @@ def create_transaction(data: dict):
         print(f"Mock Mode: Transaction created successfully: {new_tx['merchant']}")
         return new_tx
 
-    # Auto-resolve payment_source if raw source violates DB foreign key
-    user_name = data.get("user_name", "Istri")
-    raw_source = data.get("payment_source", "Cash")
-    try:
-        active_sources = get_payment_sources()
-        active_names = [s["name"] for s in active_sources if isinstance(s, dict) and "name" in s]
-        if active_names and raw_source not in active_names:
-            user_suffix = "Istri" if "istri" in (user_name or "").lower() else "Suami"
-            matched = None
-            for name in active_names:
-                if raw_source.lower() in name.lower() and user_suffix.lower() in name.lower():
-                    matched = name
-                    break
-            if not matched:
-                for name in active_names:
-                    if raw_source.lower() in name.lower():
-                        matched = name
-                        break
-            data["payment_source"] = matched or (active_names[0] if active_names else f"Cash {user_suffix}")
-    except Exception as pe:
-        print(f"Warning: payment_source validation skipped: {pe}")
-
     res = execute_with_retry(lambda c: c.table("transactions").insert(data).execute())
     return res.data
-
-# Alias for backward compatibility
-add_transaction = create_transaction
 
 def delete_transaction(transaction_id: str):
     if not _has_supabase_config:
