@@ -53,18 +53,19 @@ def parse_email_transaction(subject: str, sender: str = "", body: str = "") -> d
         client = genai.Client(api_key=GEMINI_API_KEY)
         
         prompt = (
-            f"Analisis email bukti transaksi/struk pembayaran berikut dan ekstrak detail transaksinya:\n\n"
+            f"Analisis email bukti transaksi/struk pembayaran berikut dan ekstrak detail transaksinya secara cermat:\n\n"
             f"Subject: {subject}\n"
             f"Pengirim (From): {sender}\n"
-            f"Isi Email:\n{body[:4000]}\n\n"
-            f"Tentukan apakah email ini merupakan resi/struk/bukti pembayaran/transfer keuangan asli. "
-            f"PILIHAN KATEGORI: 'Makanan', 'Transportasi', 'Kebutuhan Bulanan', 'Kebutuhan Bayi', 'Sosial & Ibadah', 'Hiburan', 'Liburan & Perjalanan', 'Perlengkapan & Acara', 'Keluarga', 'Transfer', 'Pendapatan', atau 'Lain-lain'. "
-            f"Petunjuk Kategori:\n"
-            f"- GrabBike / GrabCar / GoRide / GoCar / Parkir / Bensin → 'Transportasi'\n"
-            f"- GrabFood / GoFood / Resto / Cafe / Makanan → 'Makanan'\n"
-            f"- Indomaret / Alfamart / Superindo / Belanja Bulanan → 'Kebutuhan Bulanan'\n"
-            f"- Susu Bayi / Popok / Perlengkapan Bayi → 'Kebutuhan Bayi'\n"
-            f"- Transfer uang / kirim saldo → Kategori 'Transfer', isi field transfer_to nama penerimanya."
+            f"Isi Email:\n{body[:6000]}\n\n"
+            f"TUGAS:\n"
+            f"1. Periksa apakah email ini merupakan bukti pembayaran, resi belanja, struk pesanan (Grab/Gojek/Shopee/Tokopedia), atau notifikasi mutasi/transfer bank (Mandiri/BNI/BCA) RIIL dengan nominal rupiah.\n"
+            f"   - Jika YA, set 'is_valid_transaction': true.\n"
+            f"   - Jika email ini hanyalah promosi, iklan, LinkedIn, newsletter, atau sekadar email registrasi tanpa pembayaran, set 'is_valid_transaction': false dan amount: 0.\n"
+            f"2. 'amount': Ekstrak nominal total transaksi dalam Rupiah (misal Rp 14.000 → 14000.0). PENTING: Jangan 0 jika ini transaksi riil!\n"
+            f"3. 'merchant': Nama penyedia/toko/layanan (contoh: 'GrabBike', 'GrabFood', 'Shopee', 'Indomaret', 'Gojek', 'Mandiri Livin', 'BNI Mobile').\n"
+            f"4. 'category': Pilih salah satu dari: 'Makanan', 'Transportasi', 'Kebutuhan Bulanan', 'Kebutuhan Bayi', 'Sosial & Ibadah', 'Hiburan', 'Liburan & Perjalanan', 'Perlengkapan & Acara', 'Keluarga', 'Transfer', 'Pendapatan', atau 'Lain-lain'.\n"
+            f"5. 'payment_source': Tebak sumber pembayaran (misal 'Mandiri', 'BNI', 'Gopay', 'OVO', 'ShopeePay', 'Cash').\n"
+            f"6. 'date': Format YYYY-MM-DD. Jika tidak ada tanggal spesifik di isi email, gunakan tanggal hari ini ({datetime.today().strftime('%Y-%m-%d')})."
         )
         
         response = client.models.generate_content(

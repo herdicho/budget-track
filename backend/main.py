@@ -271,7 +271,7 @@ def handle_email_webhook(req: EmailWebhookRequest):
             "transfer_to": parsed.get("transfer_to")
         }
         
-        created = supabase_service.add_transaction(tx_data)
+        created = supabase_service.create_transaction(tx_data)
         return {
             "status": "success",
             "message": "Transaksi berhasil ter-input otomatis dari email!",
