@@ -68,6 +68,12 @@ class CategoryCreate(BaseModel):
     emoji: str = "📦"
     color: str = "#ff5555"
 
+class EmailWebhookRequest(BaseModel):
+    subject: str
+    sender: Optional[str] = ""
+    body: str
+    user_name: Optional[str] = "Istri"
+
 @app.post("/api/auth/verify")
 def verify_auth(req: LoginRequest):
     if req.password == APP_PASSWORD:
@@ -223,6 +229,58 @@ async def process_receipt(file: UploadFile = File(...)):
         return extracted
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Gagal memproses nota: {str(e)}")
+
+@app.post("/api/webhooks/email", dependencies=[Depends(verify_app_password)])
+def handle_email_webhook(req: EmailWebhookRequest):
+    """
+    Receives email notification payload from Google Apps Script, parses it with Gemini AI,
+    and inserts valid financial transactions directly into Supabase.
+    """
+    try:
+        parsed = gemini_service.parse_email_transaction(
+            subject=req.subject,
+            sender=req.sender or "",
+            body=req.body or ""
+        )
+        
+        if not parsed.get("is_valid_transaction"):
+            return {
+                "status": "ignored",
+                "message": "Email tidak terdeteksi sebagai transaksi keuangan.",
+                "parsed": parsed
+            }
+            
+        amount = float(parsed.get("amount", 0.0))
+        if amount <= 0:
+            return {
+                "status": "ignored",
+                "message": "Nominal transaksi Rp 0 atau tidak valid.",
+                "parsed": parsed
+            }
+            
+        # Structure transaction for Supabase insert
+        tx_data = {
+            "merchant": parsed.get("merchant", "Email Transaction"),
+            "date": parsed.get("date") or datetime.today().strftime('%Y-%m-%d'),
+            "category": parsed.get("category", "Lain-lain"),
+            "payment_source": parsed.get("payment_source", "Mandiri"),
+            "amount": amount,
+            "user_name": req.user_name or "Istri",
+            "items": [],
+            "receipt_url": None,
+            "transfer_to": parsed.get("transfer_to")
+        }
+        
+        created = supabase_service.add_transaction(tx_data)
+        return {
+            "status": "success",
+            "message": "Transaksi berhasil ter-input otomatis dari email!",
+            "data": created,
+            "parsed": parsed
+        }
+    except Exception as e:
+        print(f"Error handling email webhook: {e}")
+        raise HTTPException(status_code=500, detail=f"Gagal memproses email webhook: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn
