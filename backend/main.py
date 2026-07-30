@@ -300,6 +300,14 @@ def handle_email_webhook(req: EmailWebhookRequest):
         raw_source = parsed.get("payment_source", "Cash")
         valid_source = resolve_valid_payment_source(raw_source, user_name)
 
+        # Resolve transfer_to only if category is 'Transfer' to satisfy FK constraint
+        valid_transfer_to = None
+        if parsed.get("category") == "Transfer" and parsed.get("transfer_to"):
+            try:
+                valid_transfer_to = resolve_valid_payment_source(parsed.get("transfer_to"), user_name)
+            except Exception:
+                valid_transfer_to = None
+
         # Structure transaction for Supabase insert
         tx_data = {
             "merchant": parsed.get("merchant", "Email Transaction"),
@@ -310,7 +318,7 @@ def handle_email_webhook(req: EmailWebhookRequest):
             "user_name": user_name,
             "items": [],
             "receipt_url": None,
-            "transfer_to": parsed.get("transfer_to")
+            "transfer_to": valid_transfer_to
         }
         
         created = supabase_service.create_transaction(tx_data)
