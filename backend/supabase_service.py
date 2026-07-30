@@ -273,7 +273,10 @@ def create_transaction(data: dict):
         return new_tx
 
     res = execute_with_retry(lambda c: c.table("transactions").insert(data).execute())
-    return res.data[0] if res.data else None
+    return res.data
+
+# Alias for backward compatibility
+add_transaction = create_transaction
 
 def delete_transaction(transaction_id: str):
     if not _has_supabase_config:
