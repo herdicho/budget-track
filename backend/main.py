@@ -230,6 +230,44 @@ async def process_receipt(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Gagal memproses nota: {str(e)}")
 
+def resolve_valid_payment_source(raw_source: str, user_name: str) -> str:
+    """
+    Fetches active payment sources from Supabase and maps raw detected source (e.g. Gopay)
+    to valid database payment source name (e.g. Gopay Istri).
+    """
+    user_suffix = "Istri" if "istri" in (user_name or "").lower() else "Suami"
+    raw_lower = (raw_source or "").lower().replace(" ", "")
+    
+    try:
+        sources = supabase_service.get_payment_sources()
+        if not sources:
+            return f"Cash {user_suffix}"
+            
+        # 1. Best match: raw source keyword + user suffix
+        for s in sources:
+            s_name = s.get("name", "") if isinstance(s, dict) else str(s)
+            s_lower = s_name.lower().replace(" ", "")
+            if raw_lower in s_lower and user_suffix.lower() in s_lower:
+                return s_name
+                
+        # 2. General match: raw source keyword in source name
+        for s in sources:
+            s_name = s.get("name", "") if isinstance(s, dict) else str(s)
+            s_lower = s_name.lower().replace(" ", "")
+            if raw_lower in s_lower:
+                return s_name
+                
+        # 3. Fallback: Cash [User] or first source
+        for s in sources:
+            s_name = s.get("name", "") if isinstance(s, dict) else str(s)
+            if f"cash {user_suffix}".lower() in s_name.lower():
+                return s_name
+                
+        return sources[0]["name"] if isinstance(sources[0], dict) else str(sources[0])
+    except Exception as e:
+        print(f"Error resolving payment source: {e}")
+        return f"Cash {user_suffix}"
+
 @app.post("/api/webhooks/email", dependencies=[Depends(verify_app_password)])
 def handle_email_webhook(req: EmailWebhookRequest):
     """
@@ -258,14 +296,18 @@ def handle_email_webhook(req: EmailWebhookRequest):
                 "parsed": parsed
             }
             
+        user_name = req.user_name or "Istri"
+        raw_source = parsed.get("payment_source", "Cash")
+        valid_source = resolve_valid_payment_source(raw_source, user_name)
+
         # Structure transaction for Supabase insert
         tx_data = {
             "merchant": parsed.get("merchant", "Email Transaction"),
             "date": parsed.get("date") or datetime.today().strftime('%Y-%m-%d'),
             "category": parsed.get("category", "Lain-lain"),
-            "payment_source": parsed.get("payment_source", "Mandiri"),
+            "payment_source": valid_source,
             "amount": amount,
-            "user_name": req.user_name or "Istri",
+            "user_name": user_name,
             "items": [],
             "receipt_url": None,
             "transfer_to": parsed.get("transfer_to")
