@@ -20,7 +20,7 @@
 
 // CONFIGURATION (Sesuaikan 3 variabel di bawah ini):
 var BACKEND_URL = "https://herdicho-budget-track-api.hf.space"; // URL Backend Hugging Face Anda
-var APP_PASSWORD = "1234"; // Ganti dengan APP_PASSWORD Anda
+var APP_PASSWORD = "190326"; // PIN/Password aplikasi Anda (190326)
 var DEFAULT_USER_NAME = "Istri"; // Nama user bawaan untuk email masuk ini ("Suami" atau "Istri")
 
 function syncTransactionsToBudgetTrack() {
