@@ -19,7 +19,7 @@
  */
 
 // CONFIGURATION (Sesuaikan 3 variabel di bawah ini):
-var BACKEND_URL = "https://budget-track-api.onrender.com"; // Ganti dengan URL backend Render Anda
+var BACKEND_URL = "https://herdicho-budget-track-api.hf.space"; // URL Backend Hugging Face Anda
 var APP_PASSWORD = "1234"; // Ganti dengan APP_PASSWORD Anda
 var DEFAULT_USER_NAME = "Istri"; // Nama user bawaan untuk email masuk ini ("Suami" atau "Istri")
 
