@@ -585,6 +585,47 @@ def get_dashboard_summary(month: str):
         user = t.get("user_name") or "Suami"
         users_breakdown[user] = users_breakdown.get(user, 0.0) + amount
         
+    # Compute balances with a fresh ordered query to prevent HTTP-level caching
+    # (unfiltered queries from get_balances() can be cached by Supabase/PostgREST)
+    sources_list = get_payment_sources()
+    balances = {s["name"]: 0.0 for s in sources_list}
+    if not _has_supabase_config:
+        all_txs_for_balance = mock_transactions
+    else:
+        try:
+            res_bal = execute_with_retry(
+                lambda c: c.table("transactions")
+                    .select("category, payment_source, transfer_to, amount")
+                    .order("created_at", desc=False)
+                    .execute()
+            )
+            all_txs_for_balance = res_bal.data or []
+        except Exception as e:
+            print(f"Error fetching balances in get_dashboard_summary(): {e}")
+            all_txs_for_balance = []
+    for tb in all_txs_for_balance:
+        cat_b = tb.get("category")
+        src_b = (tb.get("payment_source") or "").strip()
+        dst_b = (tb.get("transfer_to") or "").strip()
+        amt_b = float(tb.get("amount") or 0.0)
+        if src_b:
+            mk = next((k for k in balances if k.lower() == src_b.lower()), None)
+            src_b = mk if mk else src_b
+            if src_b not in balances:
+                balances[src_b] = 0.0
+        if dst_b:
+            mk = next((k for k in balances if k.lower() == dst_b.lower()), None)
+            dst_b = mk if mk else dst_b
+            if dst_b not in balances:
+                balances[dst_b] = 0.0
+        if cat_b in ("Pendapatan", "Saldo Awal"):
+            if src_b: balances[src_b] += amt_b
+        elif cat_b == "Transfer":
+            if src_b: balances[src_b] -= amt_b
+            if dst_b: balances[dst_b] += amt_b
+        else:
+            if src_b: balances[src_b] -= amt_b
+
     start_date, end_date = get_cutoff_date_range(month)
     return {
         "month": month,
@@ -599,6 +640,6 @@ def get_dashboard_summary(month: str):
         "categories": categories_breakdown,
         "sources": sources_breakdown,
         "users": users_breakdown,
-        "balances": get_balances(),  # Return cumulative balances
+        "balances": balances,
         "recent_transactions": txs[:10]  # Limit to top 10
     }
